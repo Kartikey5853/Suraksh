@@ -1,0 +1,38 @@
+# ── Suraksh Backend — Python Dependencies ─────────────────────────────────────
+# Install:  pip install -r requirements.txt
+
+# Web framework
+fastapi==0.111.0
+uvicorn[standard]==0.29.0
+
+# Pydantic / settings
+pydantic==2.7.1
+pydantic-settings==2.2.1
+email-validator==2.1.1
+
+# Database
+sqlalchemy==2.0.30
+# For SQLite (built into Python — no extra driver needed)
+# Switch to PostgreSQL/Supabase:
+#   pip install psycopg2-binary   (sync)
+#   pip install asyncpg           (async)
+
+# Security — password hashing
+passlib[bcrypt]==1.7.4
+bcrypt==4.1.3
+
+# Security — JWT
+python-jose[cryptography]==3.3.0
+
+# File upload support
+python-multipart==0.0.9
+
+# Development utilities
+python-dotenv==1.0.1
+
+# ── Optional / future ──────────────────────────────────────────────────────────
+alembic==1.13.1          # database migrations
+redis==5.0.4             # token revocation / caching
+celery==5.3.6            # async task queue
+httpx==0.27.0            # async HTTP client (AI services)
+supabase==2.4.3          # Supabase Python client
