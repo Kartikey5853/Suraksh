@@ -1,20 +1,11 @@
-"""
-Suraksh - Application Entry Point
-Wires together all FastAPI routers and configures middleware.
-"""
-
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
 from app.db.database import init_db
-from app.routes import (
-    auth_routes,
-    user_routes,
-    admin_routes,
-    document_routes,
-    verification_routes,
-)
+from app.routes import auth_routes, admin_routes, user_routes, verification_routes
+from app.routes.agreement_routes import router as agreement_router
+from app.routes.agreement_routes import router as agreement_router
 
 # ── Application factory ───────────────────────────────────────────────────────
 
@@ -33,7 +24,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.ALLOWED_ORIGINS,
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -54,10 +45,10 @@ async def on_startup() -> None:
 # ── Routers ───────────────────────────────────────────────────────────────────
 
 app.include_router(auth_routes.router)
-app.include_router(user_routes.router)
 app.include_router(admin_routes.router)
-app.include_router(document_routes.router)
+app.include_router(user_routes.router)
 app.include_router(verification_routes.router)
+app.include_router(agreement_router)
 
 
 # ── Health check ──────────────────────────────────────────────────────────────

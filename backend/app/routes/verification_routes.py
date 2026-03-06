@@ -3,6 +3,7 @@ Suraksh - Verification Routes
 POST /verification/upload-id
 POST /verification/upload-face
 GET  /verification/status
+POST /verification/bypass
 
 Face verification logic is NOT implemented — placeholders only.
 """
@@ -80,7 +81,6 @@ async def upload_face(
 
 @router.get(
     "/status",
-    response_model=VerificationStatusResponse,
     summary="Get the current KYC verification status",
 )
 async def get_verification_status(
@@ -95,3 +95,51 @@ async def get_verification_status(
     """
     # placeholder
     return await verification_service.get_status(current_user, db)
+
+
+@router.post("/bypass", status_code=200)
+def bypass_verification(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    from app.models.verification import AadhaarVerification
+    import datetime
+    existing = db.query(AadhaarVerification).filter(AadhaarVerification.user_id == current_user.id).first()
+    if existing:
+        existing.is_valid = True
+        existing.verified_at = datetime.datetime.utcnow()
+    else:
+        record = AadhaarVerification(
+            user_id=current_user.id,
+            aadhaar_last4="0000",
+            aadhaar_hash="bypass",
+            is_valid=True,
+            verified_at=datetime.datetime.utcnow(),
+        )
+        db.add(record)
+    db.commit()
+    return {"message": "Aadhaar verification bypassed for testing."}
+
+
+@router.post("/aadhaar", status_code=201, summary="Submit Aadhaar document for verification")
+async def submit_aadhaar(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Accept Aadhaar image and create a pending verification record."""
+    from app.models.verification import AadhaarVerification
+    import datetime
+    existing = db.query(AadhaarVerification).filter(AadhaarVerification.user_id == current_user.id).first()
+    if existing:
+        # re-submission: reset to pending
+        existing.is_valid = False
+        existing.verified_at = None
+        existing.aadhaar_hash = "pending_review"
+    else:
+        record = AadhaarVerification(
+            user_id=current_user.id,
+            aadhaar_last4="****",
+            aadhaar_hash="pending_review",
+            is_valid=False,
+        )
+        db.add(record)
+    db.commit()
+    return {"message": "Aadhaar document submitted. Pending admin review."}

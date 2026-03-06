@@ -64,5 +64,23 @@ def init_db() -> None:
     TODO: Replace with Alembic migrations for production.
     """
     # Import models so Base is aware of them before create_all().
-    from app.models import user, document, verification  # noqa: F401
+    from app.models import user, otp, document, verification, signature, document_request, agreement  # noqa: F401
     Base.metadata.create_all(bind=engine)
+
+    # ── Inline column migrations for SQLite ───────────────────────────────────
+    # SQLite does not support ALTER TABLE in create_all when table already exists.
+    # We guard each statement with a try/except so it's idempotent.
+    _add_column_if_missing("agreements", "rejection_reason", "TEXT")
+    _add_column_if_missing("agreements", "source_request_id", "VARCHAR(36)")
+
+
+def _add_column_if_missing(table: str, column: str, col_type: str) -> None:
+    """Attempt to add a column to a table; silently ignore if it already exists."""
+    try:
+        with engine.connect() as conn:
+            conn.execute(  # type: ignore[call-overload]
+                __import__("sqlalchemy").text(f"ALTER TABLE {table} ADD COLUMN {column} {col_type}")
+            )
+            conn.commit()
+    except Exception:
+        pass  # column already exists or DB doesn't support this DDL

@@ -64,16 +64,24 @@ async def upload_face_image(
 async def get_status(current_user: User, db: Session):
     """
     Return the current Verification record for the user.
-
-    Implementation checklist:
-      [ ] Query Verification by user_id.
-      [ ] Return None / 404 if not found.
-
-    TODO: Include completeness score when scoring engine is ready.
-    NOT YET IMPLEMENTED — document completeness scoring pending.
     """
-    # placeholder
-    pass
+    from app.models.verification import AadhaarVerification
+    record = db.query(AadhaarVerification).filter(AadhaarVerification.user_id == current_user.id).first()
+    if not record:
+        return {
+            "user_id": current_user.id,
+            "is_verified": False,
+            "aadhaar_submitted": False,
+            "aadhaar_last4": None,
+            "verified_at": None,
+        }
+    return {
+        "user_id": current_user.id,
+        "is_verified": record.is_valid,
+        "aadhaar_submitted": True,
+        "aadhaar_last4": record.aadhaar_last4,
+        "verified_at": record.verified_at.isoformat() if record.verified_at else None,
+    }
 
 
 async def approve_verification(verification_id: str, admin: User, db: Session):

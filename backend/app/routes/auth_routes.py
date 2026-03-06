@@ -1,91 +1,63 @@
-"""
-Suraksh - Authentication Routes
-POST /auth/register
-POST /auth/login
-POST /auth/verify-otp
-"""
-
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.db.database import get_db
 from app.schemas.user_schema import (
-    OTPVerifyRequest,
-    TokenResponse,
-    UserLoginRequest,
     UserRegisterRequest,
+    UserLoginRequest,
+    ForgotPasswordRequest,
+    ResetPasswordRequest,
 )
-from app.services import auth_service
+from app.services.auth_service import (
+    register_user,
+    login_user,
+    forgot_password,
+    reset_password,
+)
+from app.dependencies.auth_dependencies import get_current_user
+from app.models.user import User
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 
-@router.post(
-    "/register",
-    response_model=TokenResponse,
-    status_code=status.HTTP_201_CREATED,
-    summary="Register a new user account",
-)
-async def register(
-    payload: UserRegisterRequest,
-    db: Session = Depends(get_db),
-):
-    """
-    Register a new user.
-
-    Steps (placeholders — not yet implemented):
-      1. Validate that the email is not already taken.
-      2. Hash `payload.password` via security.hash_password().
-      3. Hash `payload.gov_id` (if provided) via security.hash_government_id().
-      4. Persist the User record.
-      5. Generate and return a JWT access token.
-
-    TODO: Trigger OTP email after registration.
-    """
-    # placeholder
-    return await auth_service.register_user(payload, db)
+@router.post("/register", status_code=201)
+def register(payload: UserRegisterRequest, db: Session = Depends(get_db)):
+    return register_user(
+        name=payload.name,
+        email=payload.email,
+        password=payload.password,
+        phone=payload.phone,
+        db=db,
+    )
 
 
-@router.post(
-    "/login",
-    response_model=TokenResponse,
-    summary="Authenticate and obtain JWT tokens",
-)
-async def login(
-    payload: UserLoginRequest,
-    db: Session = Depends(get_db),
-):
-    """
-    Authenticate a user with email + password.
-
-    Steps (placeholders):
-      1. Look up user by email.
-      2. Verify password via security.verify_password().
-      3. Return signed JWT access + refresh tokens.
-
-    TODO: Add rate-limiting / account lockout after N failed attempts.
-    """
-    # placeholder
-    return await auth_service.login_user(payload, db)
+@router.post("/login")
+def login(payload: UserLoginRequest, db: Session = Depends(get_db)):
+    return login_user(email=payload.email, password=payload.password, db=db)
 
 
-@router.post(
-    "/verify-otp",
-    summary="Verify the OTP code sent to the user",
-)
-async def verify_otp(
-    payload: OTPVerifyRequest,
-    db: Session = Depends(get_db),
-):
-    """
-    Verify the OTP code.
+@router.post("/forgot-password")
+def forgot_pass(payload: ForgotPasswordRequest, db: Session = Depends(get_db)):
+    return forgot_password(email=payload.email, db=db)
 
-    Steps (placeholders):
-      1. Look up user by email.
-      2. Compare OTP code and check expiry.
-      3. Mark user as verified.
 
-    TODO: Implement actual OTP delivery (email / SMS) and TOTP logic.
-    """
-    # placeholder
-    return await auth_service.verify_otp(payload, db)
+@router.post("/reset-password")
+def reset_pass(payload: ResetPasswordRequest, db: Session = Depends(get_db)):
+    return reset_password(token=payload.token, new_password=payload.new_password, db=db)
+
+
+@router.post("/send-otp")
+def send_otp(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    from app.services.otp_service import generate_otp
+    generate_otp(current_user.id, db)
+    return {"message": "OTP sent — check the server terminal"}
+
+
+@router.post("/verify-otp")
+def verify_otp(code: str, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    from app.services.otp_service import verify_otp as check_otp
+    valid = check_otp(current_user.id, code, db)
+    if not valid:
+        raise HTTPException(status_code=400, detail="Invalid or expired OTP")
+    return {"message": "OTP verified", "verified": True}
+

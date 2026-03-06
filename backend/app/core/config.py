@@ -31,7 +31,16 @@ class Settings(BaseSettings):
     OTP_EXPIRE_MINUTES: int = 10
 
     # ── CORS ───────────────────────────────────────────────────────────────────
-    ALLOWED_ORIGINS: list[str] = ["http://localhost:3000"]
+    ALLOWED_ORIGINS: list[str] = ["*"]
+
+    # ── Role registration codes ────────────────────────────────────────────────
+    # Format: role -> invite code (change before production)
+    ROLE_CODES: dict = {
+        "admin":     "ADM-2025",
+        "lawyer":    "LAW-8X4T",
+        "associate": "ASC-7K2M",
+        "founder":   "FND-3Q9R",
+    }
 
     class Config:
         env_file = ".env"

@@ -1,77 +1,110 @@
-"""
-Suraksh - Auth Service
-Business logic for registration, login and OTP verification.
-All functions are placeholders — implementation pending.
-"""
+import secrets
 
+from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
-from app.schemas.user_schema import (
-    OTPVerifyRequest,
-    TokenResponse,
-    UserLoginRequest,
-    UserRegisterRequest,
-)
+from app.core.security import hash_password, verify_password
+from app.core.jwt_handler import create_access_token
+from app.models.user import User
 
 
-async def register_user(payload: UserRegisterRequest, db: Session) -> TokenResponse:
-    """
-    Create a new user account.
-
-    Implementation checklist:
-      [ ] Check for duplicate email.
-      [ ] Hash password via security.hash_password(payload.password).
-      [ ] Hash gov_id (if present) via security.hash_government_id(payload.gov_id).
-      [ ] Persist User model to DB.
-      [ ] Generate JWT via jwt_handler.create_access_token(user.id).
-      [ ] Return TokenResponse.
-
-    TODO: Send welcome / OTP email after registration.
-    """
-    # placeholder
-    pass
-
-
-async def login_user(payload: UserLoginRequest, db: Session) -> TokenResponse:
-    """
-    Authenticate an existing user.
-
-    Implementation checklist:
-      [ ] Query User by email.
-      [ ] Verify password via security.verify_password().
-      [ ] Raise HTTP 401 on mismatch.
-      [ ] Generate access + refresh tokens.
-      [ ] Return TokenResponse.
-
-    TODO: Implement refresh token rotation and revocation.
-    """
-    # placeholder
-    pass
+def register_user(name: str, email: str, password: str, db: Session, phone: str = None):
+    if db.query(User).filter(User.email == email).first():
+        raise HTTPException(status_code=400, detail="Email already registered")
+    user = User(
+        name=name,
+        email=email,
+        phone=phone,
+        hashed_password=hash_password(password),
+        role="founder",
+        is_onboarded=False,
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    token = create_access_token(subject=user.id, extra_claims={"role": user.role})
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+        "user_id": user.id,
+        "name": user.name,
+        "role": user.role,
+        "is_onboarded": user.is_onboarded,
+    }
 
 
-async def verify_otp(payload: OTPVerifyRequest, db: Session) -> dict:
-    """
-    Validate an OTP code and mark the user as verified.
+def login_user(email: str, password: str, db: Session, admin_only: bool = False):
+    user = db.query(User).filter(User.email == email).first()
+    if not user or not verify_password(password, user.hashed_password):
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+    if admin_only and user.role not in ("admin", "associate", "lawyer"):
+        raise HTTPException(status_code=403, detail="Admin portal access required")
 
-    Implementation checklist:
-      [ ] Query User by email.
-      [ ] Compare OTP code (constant-time comparison).
-      [ ] Check otp_expires_at.
-      [ ] Set user.is_verified = True.
-      [ ] Clear the OTP fields from the DB.
-      [ ] Return success response.
+    # Admin OTP check
+    if admin_only and user.admin_otp_required:
+        # Return a flag telling frontend to prompt for OTP
+        token = create_access_token(subject=user.id, extra_claims={"role": user.role})
+        return {
+            "access_token": token,
+            "token_type": "bearer",
+            "user_id": user.id,
+            "name": user.name,
+            "role": user.role,
+            "is_onboarded": user.is_onboarded,
+            "needs_admin_otp": True,
+        }
 
-    TODO: Implement TOTP (HMAC-based OTP) or email link flow.
-    """
-    # placeholder
-    pass
+    token = create_access_token(subject=user.id, extra_claims={"role": user.role})
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+        "user_id": user.id,
+        "name": user.name,
+        "role": user.role,
+        "is_onboarded": user.is_onboarded,
+        "needs_admin_otp": False,
+    }
 
 
-async def get_user_by_id(user_id: str, db: Session):
-    """
-    Fetch a User record by primary key.
+def forgot_password(email: str, db: Session):
+    user = db.query(User).filter(User.email == email).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Email not found")
+    reset_token = secrets.token_urlsafe(32)
+    user.reset_token = reset_token
+    db.commit()
+    # In production: send this token via email
+    return {"message": "Password reset token generated", "reset_token": reset_token}
 
-    TODO: Return None gracefully when not found (used by JWT dependency).
-    """
-    # placeholder
-    pass
+
+def reset_password(token: str, new_password: str, db: Session):
+    user = db.query(User).filter(User.reset_token == token).first()
+    if not user:
+        raise HTTPException(status_code=400, detail="Invalid or expired reset token")
+    user.hashed_password = hash_password(new_password)
+    user.reset_token = None
+    db.commit()
+    return {"message": "Password reset successful"}
+
+
+
+def forgot_password(email: str, db: Session):
+    user = db.query(User).filter(User.email == email).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Email not found")
+    reset_token = secrets.token_urlsafe(32)
+    user.reset_token = reset_token
+    db.commit()
+    # In production: send this token via email
+    return {"message": "Password reset token generated", "reset_token": reset_token}
+
+
+def reset_password(token: str, new_password: str, db: Session):
+    user = db.query(User).filter(User.reset_token == token).first()
+    if not user:
+        raise HTTPException(status_code=400, detail="Invalid or expired reset token")
+    user.hashed_password = hash_password(new_password)
+    user.reset_token = None
+    db.commit()
+    return {"message": "Password reset successful"}
+

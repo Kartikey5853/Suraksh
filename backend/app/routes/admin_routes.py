@@ -1,133 +1,332 @@
-"""
-Suraksh - Admin Routes
-GET  /admin/dashboard
-POST /admin/upload-document
-POST /admin/create-agreement
-POST /admin/send-document
-GET  /admin/filter-documents
+import uuid
+from typing import Optional
 
-All routes are protected by the admin_user dependency.
-Agreement generation, scoring, and search are NOT yet implemented.
-"""
-
-from fastapi import APIRouter, Depends, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.db.database import get_db
-from app.dependencies.auth_dependencies import get_admin_user
+from app.dependencies.auth_dependencies import get_current_admin
+from app.models.document_request import DocumentRequest
+from app.models.document import Document
 from app.models.user import User
-from app.schemas.document_schema import (
-    AdminUploadDocumentRequest,
-    CreateAgreementRequest,
-    DocumentFilterRequest,
-    SendDocumentRequest,
-)
+from app.models.agreement import Agreement
+from app.models.verification import AadhaarVerification
+from app.schemas.user_schema import UserLoginRequest, UserRegisterRequest
+from app.services.auth_service import login_user
+from app.core.security import hash_password
+from app.core.config import settings
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
 
+VALID_ROLES = ("founder", "associate", "lawyer", "admin")
 
-@router.get(
-    "/dashboard",
-    summary="Admin dashboard statistics overview",
-)
-async def admin_dashboard(
-    admin: User = Depends(get_admin_user),
+
+class AdminRegisterPayload(UserRegisterRequest):
+    role: str
+    role_code: str
+
+
+@router.post("/register", status_code=201)
+def admin_register(payload: AdminRegisterPayload, db: Session = Depends(get_db)):
+    """Register admin/staff using a secret role invite code."""
+    if payload.role not in VALID_ROLES:
+        raise HTTPException(status_code=400, detail=f"Invalid role. Choose from: {list(VALID_ROLES)}")
+    expected = settings.ROLE_CODES.get(payload.role)
+    if not expected or payload.role_code != expected:
+        raise HTTPException(status_code=403, detail="Invalid role code")
+    if db.query(User).filter(User.email == payload.email).first():
+        raise HTTPException(status_code=400, detail="Email already registered")
+    user = User(
+        id=str(uuid.uuid4()),
+        name=payload.name,
+        email=payload.email,
+        phone=payload.phone,
+        hashed_password=hash_password(payload.password),
+        role=payload.role,
+        is_onboarded=True,
+        is_active=True,
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return {"user_id": user.id, "name": user.name, "role": user.role, "email": user.email}
+
+class AdminUserCreatePayload(UserRegisterRequest):
+    role: str
+
+
+@router.post("/create-user", status_code=201)
+def create_user(payload: AdminUserCreatePayload, current_admin: User = Depends(get_current_admin), db: Session = Depends(get_db)):
+    if payload.role not in VALID_ROLES:
+        raise HTTPException(status_code=400, detail=f"Invalid role. Choose from: {VALID_ROLES}")
+    if db.query(User).filter(User.email == payload.email).first():
+        raise HTTPException(status_code=400, detail="Email already registered")
+    user = User(
+        id=str(uuid.uuid4()),
+        name=payload.name,
+        email=payload.email,
+        phone=payload.phone,
+        hashed_password=hash_password(payload.password),
+        role=payload.role,
+        is_onboarded=False,
+        is_active=True,
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return {
+        "user_id": user.id,
+        "name": user.name,
+        "role": user.role,
+        "email": user.email,
+        "is_onboarded": user.is_onboarded,
+        "is_active": user.is_active,
+    }
+
+
+class RoleUpdatePayload(BaseModel):
+    role: str
+
+
+class DocumentRequestUpdatePayload(BaseModel):
+    status: str  # pending / in_review / approved / rejected
+    reviewer_notes: Optional[str] = None
+    assigned_to: Optional[str] = None
+
+
+class SendAgreementFromRequestPayload(BaseModel):
+    title: str
+    content: str
+
+
+# ── Auth ──────────────────────────────────────────────────────────────────────
+
+@router.post("/login")
+def admin_login(payload: UserLoginRequest, db: Session = Depends(get_db)):
+    return login_user(email=payload.email, password=payload.password, db=db, admin_only=True)
+
+
+# ── User management ───────────────────────────────────────────────────────────
+
+@router.get("/users")
+def list_users(current_admin: User = Depends(get_current_admin), db: Session = Depends(get_db)):
+    users = db.query(User).all()
+    return [
+        {
+            "id": u.id,
+            "name": u.name,
+            "email": u.email,
+            "phone": u.phone,
+            "role": u.role,
+            "is_active": u.is_active,
+            "is_onboarded": u.is_onboarded,
+            "created_at": u.created_at.isoformat() if u.created_at else None,
+        }
+        for u in users
+    ]
+
+
+@router.put("/users/{user_id}/role")
+def update_user_role(
+    user_id: str,
+    payload: RoleUpdatePayload,
+    current_admin: User = Depends(get_current_admin),
     db: Session = Depends(get_db),
 ):
-    """
-    Return aggregate statistics for the admin dashboard.
-
-    Placeholder stats:
-      - total users
-      - pending verifications
-      - documents by status
-
-    TODO: Implement with real queries.
-    """
-    # placeholder
-    pass
+    if payload.role not in VALID_ROLES:
+        raise HTTPException(status_code=400, detail=f"Invalid role. Choose from: {VALID_ROLES}")
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    user.role = payload.role
+    db.commit()
+    return {"message": f"Role updated to '{payload.role}'", "user_id": user_id}
 
 
-@router.post(
-    "/upload-document",
-    status_code=201,
-    summary="Admin uploads a document to the platform",
-)
-async def upload_document(
-    metadata: AdminUploadDocumentRequest = Depends(),
-    file: UploadFile = File(...),
-    admin: User = Depends(get_admin_user),
+@router.put("/users/{user_id}/toggle-active")
+def toggle_user_active(
+    user_id: str,
+    current_admin: User = Depends(get_current_admin),
     db: Session = Depends(get_db),
 ):
-    """
-    Upload a document as an admin.
-
-    Steps (placeholders):
-      1. Read file bytes.
-      2. Compute SHA-256 integrity hash via hashing.compute_document_hash().
-      3. Save file to storage.
-      4. Persist Document record with integrity_hash.
-
-    TODO: Integrate with cloud storage (Supabase Storage / Azure Blob).
-    """
-    # placeholder
-    pass
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    user.is_active = not user.is_active
+    db.commit()
+    return {"message": f"User {'activated' if user.is_active else 'deactivated'}", "is_active": user.is_active}
 
 
-@router.post(
-    "/create-agreement",
-    status_code=201,
-    summary="Create a new agreement document (placeholder)",
-)
-async def create_agreement(
-    payload: CreateAgreementRequest,
-    admin: User = Depends(get_admin_user),
+# ── Document requests ─────────────────────────────────────────────────────────
+
+@router.get("/document-requests")
+def list_all_document_requests(
+    current_admin: User = Depends(get_current_admin),
     db: Session = Depends(get_db),
 ):
-    """
-    Placeholder for the agreement generation engine.
+    reqs = db.query(DocumentRequest).all()
+    user_cache: dict = {}
+    results = []
+    for r in reqs:
+        if r.user_id not in user_cache:
+            u = db.query(User).filter(User.id == r.user_id).first()
+            user_cache[r.user_id] = u
+        u = user_cache[r.user_id]
+        results.append({
+            "id": r.id,
+            "user_id": r.user_id,
+            "user_name": u.name if u else "Unknown",
+            "user_email": u.email if u else "",
+            "doc_type": r.doc_type,
+            "doc_category": r.doc_category,
+            "notes": r.notes,
+            "status": r.status,
+            "assigned_to": r.assigned_to,
+            "reviewer_notes": r.reviewer_notes,
+            "created_at": r.created_at.isoformat() if r.created_at else None,
+        })
+    return results
 
-    TODO: Implement template rendering, clause assembly, and PDF generation.
-    NOT YET IMPLEMENTED — agreement generation logic pending.
-    """
-    # placeholder — agreement generation engine not implemented
-    pass
 
-
-@router.post(
-    "/send-document",
-    summary="Send a document to a user",
-)
-async def send_document(
-    payload: SendDocumentRequest,
-    admin: User = Depends(get_admin_user),
+@router.put("/document-requests/{req_id}")
+def update_document_request(
+    req_id: str,
+    payload: DocumentRequestUpdatePayload,
+    current_admin: User = Depends(get_current_admin),
     db: Session = Depends(get_db),
 ):
-    """
-    Assign / route an existing document to a target user.
+    req = db.query(DocumentRequest).filter(DocumentRequest.id == req_id).first()
+    if not req:
+        raise HTTPException(status_code=404, detail="Document request not found")
+    req.status = payload.status
+    if payload.reviewer_notes is not None:
+        req.reviewer_notes = payload.reviewer_notes
+    if payload.assigned_to is not None:
+        req.assigned_to = payload.assigned_to
+    db.commit()
+    return {"message": "Document request updated", "id": req_id, "status": req.status}
 
-    TODO: Implement notification dispatch (email / in-app).
-    """
-    # placeholder
-    pass
 
-
-@router.get(
-    "/filter-documents",
-    summary="Filter and search documents (placeholder)",
-)
-async def filter_documents(
-    admin: User = Depends(get_admin_user),
+@router.post("/document-requests/{req_id}/send-agreement", status_code=201)
+def send_agreement_from_request(
+    req_id: str,
+    payload: SendAgreementFromRequestPayload,
+    current_admin: User = Depends(get_current_admin),
     db: Session = Depends(get_db),
-    status: str | None = None,
-    document_type: str | None = None,
 ):
-    """
-    Return documents matching the supplied filters.
+    """Create and immediately send an agreement to the requesting user, fulfilling their document request."""
+    req = db.query(DocumentRequest).filter(DocumentRequest.id == req_id).first()
+    if not req:
+        raise HTTPException(status_code=404, detail="Document request not found")
+    user = db.query(User).filter(User.id == req.user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Requesting user not found")
 
-    TODO: Add full-text / semantic search when search engine is ready.
-    TODO: Add pagination (skip / limit).
-    NOT YET IMPLEMENTED — search logic pending.
-    """
-    # placeholder — semantic document search not implemented
-    pass
+    ag = Agreement(
+        title=payload.title,
+        content=payload.content,
+        doc_type=req.doc_type,
+        doc_category=req.doc_category,
+        created_by=current_admin.id,
+        sent_to=req.user_id,
+        status="sent",
+        source_request_id=req_id,
+    )
+    db.add(ag)
+    req.status = "approved"
+    db.commit()
+    db.refresh(ag)
+    return {
+        "message": "Agreement created and sent to user",
+        "agreement_id": ag.id,
+        "sent_to": req.user_id,
+        "request_id": req_id,
+    }
+
+
+# ── Verification management ───────────────────────────────────────────────────
+
+@router.get("/verifications")
+def list_all_verifications(
+    current_admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    verifications = db.query(AadhaarVerification).all()
+    results = []
+    for v in verifications:
+        user = db.query(User).filter(User.id == v.user_id).first()
+        results.append({
+            "id": v.id,
+            "user_id": v.user_id,
+            "user_name": user.name if user else "Unknown",
+            "user_email": user.email if user else "",
+            "aadhaar_last4": v.aadhaar_last4,
+            "is_valid": v.is_valid,
+            "verified_at": v.verified_at.isoformat() if v.verified_at else None,
+            "created_at": v.created_at.isoformat() if v.created_at else None,
+        })
+    return results
+
+
+@router.post("/verifications/{user_id}/approve")
+def approve_verification(
+    user_id: str,
+    current_admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    import datetime
+    v = db.query(AadhaarVerification).filter(AadhaarVerification.user_id == user_id).first()
+    if not v:
+        raise HTTPException(status_code=404, detail="Verification record not found")
+    v.is_valid = True
+    v.verified_at = datetime.datetime.utcnow()
+    user = db.query(User).filter(User.id == user_id).first()
+    if user:
+        user.is_onboarded = True
+    db.commit()
+    return {"message": "Verification approved", "user_id": user_id}
+
+
+@router.post("/verifications/{user_id}/reject")
+def reject_verification(
+    user_id: str,
+    current_admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    v = db.query(AadhaarVerification).filter(AadhaarVerification.user_id == user_id).first()
+    if not v:
+        raise HTTPException(status_code=404, detail="Verification record not found")
+    v.is_valid = False
+    v.verified_at = None
+    user = db.query(User).filter(User.id == user_id).first()
+    if user:
+        user.is_onboarded = False
+    db.commit()
+    return {"message": "Verification rejected", "user_id": user_id}
+
+
+# ── All documents (admin view) ────────────────────────────────────────────────
+
+@router.get("/documents")
+def list_all_documents(
+    current_admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    docs = db.query(Document).all()
+    return [
+        {
+            "id": d.id,
+            "title": d.title,
+            "description": d.description,
+            "doc_type": d.doc_type,
+            "doc_category": d.doc_category,
+            "owner_id": d.owner_id,
+            "assigned_by": d.assigned_by,
+            "status": d.status,
+            "is_signed": d.is_signed,
+            "signed_at": d.signed_at.isoformat() if d.signed_at else None,
+            "created_at": d.created_at.isoformat() if d.created_at else None,
+        }
+        for d in docs
+    ]
