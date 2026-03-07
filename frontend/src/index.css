@@ -276,3 +276,8 @@
   animation: triangle-assemble-3 0.6s ease-out 0.3s forwards;
   opacity: 0;
 }
+
+/* ── Click ripple burst (used by UserLayout / AdminLayout) ── */
+@keyframes ripple-burst {
+  to { transform: scale(4.5); opacity: 0; }
+}

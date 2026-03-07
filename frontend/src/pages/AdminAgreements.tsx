@@ -264,7 +264,7 @@ const AdminAgreements = () => {
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
             <div className="absolute inset-0 bg-black/70" onClick={() => setTimelineModal(null)} />
             <motion.div
-              className="relative w-full max-w-5xl bg-card rounded-2xl border border-border shadow-2xl flex flex-col max-h-[92vh]"
+              className="relative w-[85vw] max-w-[85vw] bg-card rounded-2xl border border-border shadow-2xl flex flex-col max-h-[90vh]"
               initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 20 }}
             >
               {timelineLoading ? (

@@ -280,7 +280,7 @@ const AdminDocuments = () => {
             onClick={() => setDetailAg(null)}
           >
             <motion.div
-              className="bg-card border border-border rounded-2xl w-full max-w-5xl max-h-[92vh] overflow-y-auto shadow-2xl"
+              className="bg-card border border-border rounded-2xl w-[85vw] max-w-[85vw] max-h-[90vh] overflow-y-auto shadow-2xl"
               initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 20 }}
               onClick={(e) => e.stopPropagation()}
             >
@@ -407,7 +407,7 @@ const AdminDocuments = () => {
             onClick={() => setDocDetail(null)}
           >
             <motion.div
-              className="bg-card border border-border rounded-2xl w-full max-w-5xl max-h-[92vh] overflow-y-auto shadow-2xl"
+              className="bg-card border border-border rounded-2xl w-[85vw] max-w-[85vw] max-h-[90vh] overflow-y-auto shadow-2xl"
               initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 20 }}
               onClick={(e) => e.stopPropagation()}
             >
