@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app.core.config import settings
 from app.db.database import init_db
@@ -71,6 +72,11 @@ app.include_router(agreement_router)
 
 
 # ── Health check ──────────────────────────────────────────────────────────────
+
+@app.api_route("/health", methods=["GET", "HEAD"])
+def health():
+    """Simple liveness probe — returns 200 OK when the server is running."""
+    return JSONResponse(content={"status": "ok"})
 
 @app.get("/health", tags=["System"])
 async def health_check():

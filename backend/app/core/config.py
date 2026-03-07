@@ -15,12 +15,11 @@ class Settings(BaseSettings):
     DEBUG: bool = True
 
     # ── Database ───────────────────────────────────────────────────────────────
-    # SQLite for local development.
-    # Switch to: "postgresql+asyncpg://user:password@host/dbname" for Supabase.
-    DATABASE_URL: str = "sqlite:///./suraksh.db"
+    # Supabase/PostgreSQL connection
+    DATABASE_URL: str = "postgresql+psycopg2://<user>:<password>@<host>:5432/<database>"
 
     # ── JWT ────────────────────────────────────────────────────────────────────
-    SECRET_KEY: str = "CHANGE_ME_BEFORE_PRODUCTION"
+    SECRET_KEY: str = "bee518a6-d433-4c25-98ae-eb2d4a0acc5e"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
 
