@@ -338,7 +338,7 @@ const AdminDashboard = () => {
             >
               <div className="absolute inset-0 bg-black/60" onClick={() => { setSendingRequest(null); setSendAgMsg(""); }} />
               <motion.div
-                className="relative w-full max-w-2xl bg-card rounded-2xl border border-border shadow-2xl p-6 max-h-[85vh] overflow-y-auto"
+                className="relative w-full max-w-5xl bg-card rounded-2xl border border-border shadow-2xl p-6 max-h-[92vh] overflow-y-auto"
                 initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 20 }}
               >
                 <div className="flex items-center justify-between mb-4">

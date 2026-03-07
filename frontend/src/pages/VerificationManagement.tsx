@@ -179,7 +179,7 @@ const VerificationManagement = () => {
             onClick={() => setDetail(null)}
           >
             <motion.div
-              className="bg-card border border-border rounded-2xl w-full max-w-md shadow-2xl overflow-hidden"
+              className="bg-card border border-border rounded-2xl w-full max-w-4xl max-h-[92vh] overflow-y-auto shadow-2xl"
               initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 20 }}
               onClick={(e) => e.stopPropagation()}
             >

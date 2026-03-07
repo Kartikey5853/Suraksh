@@ -148,7 +148,7 @@ const LawyerDashboard = () => {
             onClick={() => setReviewAg(null)}
           >
             <motion.div
-              className="bg-card border border-border rounded-2xl w-full max-w-2xl max-h-[92vh] overflow-y-auto shadow-2xl"
+              className="bg-card border border-border rounded-2xl w-full max-w-5xl max-h-[92vh] overflow-y-auto shadow-2xl"
               initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 20 }}
               onClick={(e) => e.stopPropagation()}
             >

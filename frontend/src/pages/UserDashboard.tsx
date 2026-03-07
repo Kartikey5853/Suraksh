@@ -668,7 +668,7 @@ const UserDashboard = () => {
           >
             <div className="absolute inset-0 bg-black/60" onClick={() => { setShowRequestModal(false); setPendingRequest(null); setRequestNotes(""); }} />
             <motion.div
-              className="relative w-full max-w-lg bg-card rounded-2xl border border-border shadow-2xl p-6 max-h-[80vh] overflow-y-auto"
+              className="relative w-full max-w-5xl bg-card rounded-2xl border border-border shadow-2xl p-6 max-h-[92vh] overflow-y-auto"
               initial={{ scale: 0.95, y: 20 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.95, y: 20 }}

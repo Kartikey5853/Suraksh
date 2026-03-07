@@ -461,6 +461,26 @@ export const HorizonHeroSection: React.FC = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // Global click ripple – attaches to every <button> on the page
+  useEffect(() => {
+    const handleRipple = (e: MouseEvent) => {
+      const btn = (e.target as HTMLElement).closest('button') as HTMLElement | null;
+      if (!btn) return;
+      const rect = btn.getBoundingClientRect();
+      const size = Math.max(rect.width, rect.height) * 1.6;
+      const span = document.createElement('span');
+      span.className = 'ripple-wave';
+      span.style.cssText = `width:${size}px;height:${size}px;left:${e.clientX - rect.left - size / 2}px;top:${e.clientY - rect.top - size / 2}px;`;
+      const prev = btn.style.position;
+      if (!prev || prev === 'static') btn.style.position = 'relative';
+      btn.style.overflow = 'hidden';
+      btn.appendChild(span);
+      span.addEventListener('animationend', () => span.remove(), { once: true });
+    };
+    document.addEventListener('click', handleRipple);
+    return () => document.removeEventListener('click', handleRipple);
+  }, []);
+
   const splitTitle = (text: string) =>
     text.split('').map((char, i) => (
       <span key={i} className="title-char inline-block">
@@ -495,14 +515,15 @@ export const HorizonHeroSection: React.FC = () => {
         .progress-fill { height: 100%; background: #d4af37; border-radius: 2px; transition: width 0.1s; }
         .section-counter { font-size: 0.65rem; color: rgba(255,255,255,0.3); letter-spacing: 0.2em; }
         .scroll-sections { position: relative; z-index: 5; }
-        .content-section { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 80px 20px; }
+        .content-section { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 80px 20px; position: relative; overflow: visible; }
         .features-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 24px; max-width: 1100px; width: 100%; margin-top: 48px; }
-        .feature-card { background: #fff; border: 1px solid rgba(212,175,55,0.25); border-radius: 16px; padding: 28px; }
-        .feature-card h3 { font-size: 0.95rem; font-weight: 700; color: #92700a; margin-bottom: 12px; letter-spacing: 0.05em; }
-        .feature-card li { font-size: 0.82rem; color: #222; padding: 4px 0 4px 20px; position: relative; line-height: 1.5; }
-        .feature-card li::before { content: '✓'; position: absolute; left: 0; color: #059669; font-weight: bold; }
+        .feature-card { position: relative; overflow: hidden; background: #fff; border: 1px solid rgba(212,175,55,0.25); border-radius: 16px; padding: 28px; }
+        .feature-card h3 { font-size: 0.95rem; font-weight: 700; color: #92700a; margin-bottom: 14px; letter-spacing: 0.05em; }
+        .feature-card li { font-size: 0.85rem; color: #1a1a1a; padding: 7px 0 7px 30px; position: relative; line-height: 1.65; border-radius: 6px; transition: background 0.2s; }
+        .feature-card li:hover { background: rgba(5,150,105,0.08); }
+        .feature-card li::before { content: ''; position: absolute; left: 9px; top: 50%; transform: translateY(-50%); width: 8px; height: 8px; border-radius: 50%; background: linear-gradient(135deg,#10b981,#059669); box-shadow: 0 0 8px rgba(16,185,129,0.6); }
         .unique-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 24px; max-width: 1100px; width: 100%; margin-top: 48px; }
-        .unique-card { background: #fff; border: 1px solid rgba(14,165,233,0.3); border-radius: 16px; padding: 32px 28px; transition: border-color 0.3s, transform 0.3s, box-shadow 0.3s; }
+        .unique-card { position: relative; overflow: hidden; background: #fff; border: 1px solid rgba(14,165,233,0.3); border-radius: 16px; padding: 32px 28px; transition: border-color 0.3s, transform 0.3s, box-shadow 0.3s; }
         .unique-card:hover { border-color: rgba(14,165,233,0.7); transform: translateY(-4px); box-shadow: 0 8px 32px rgba(14,165,233,0.15); }
         .unique-num { font-size: 2.5rem; font-weight: 900; color: rgba(14,165,233,0.7); font-family: 'Montserrat', sans-serif; }
         .unique-title { font-size: 1rem; font-weight: 700; color: #111; margin: 8px 0 12px; letter-spacing: 0.03em; }
@@ -510,6 +531,40 @@ export const HorizonHeroSection: React.FC = () => {
         .section-heading { font-size: clamp(2rem, 5vw, 3.5rem); font-weight: 900; color: #fff; letter-spacing: 0.1em; text-align: center; font-family: 'Montserrat', sans-serif; }
         .section-heading span { color: #d4af37; }
         .section-sub { font-size: 1rem; color: rgba(255,255,255,0.5); margin-top: 12px; text-align: center; letter-spacing: 0.05em; }
+        /* ── Sparkle particles ─────────────────────────────── */
+        @keyframes sparkle-float {
+          0%   { opacity: 0; transform: translateY(0) scale(0) rotate(0deg); }
+          20%  { opacity: 1; transform: translateY(-8px) scale(1) rotate(45deg); }
+          80%  { opacity: 0.55; transform: translateY(-24px) scale(0.7) rotate(90deg); }
+          100% { opacity: 0; transform: translateY(-38px) scale(0) rotate(135deg); }
+        }
+        .sparkle-dot { position: absolute; border-radius: 50%; pointer-events: none; animation: sparkle-float linear infinite; }
+        /* ── Celestial ambient orbs ────────────────────────── */
+        .celestial-left {
+          position: absolute; left: -110px; top: 50%; transform: translateY(-50%);
+          width: 360px; height: 580px; pointer-events: none; z-index: 0;
+          background: radial-gradient(ellipse at center, rgba(212,175,55,0.22) 0%, transparent 70%);
+          filter: blur(72px);
+          animation: celestial-pulse 5s ease-in-out infinite alternate;
+        }
+        .celestial-right {
+          position: absolute; right: -110px; top: 50%; transform: translateY(-50%);
+          width: 360px; height: 580px; pointer-events: none; z-index: 0;
+          background: radial-gradient(ellipse at center, rgba(16,185,129,0.22) 0%, transparent 70%);
+          filter: blur(72px);
+          animation: celestial-pulse 5s ease-in-out infinite alternate-reverse;
+        }
+        @keyframes celestial-pulse {
+          from { opacity: 0.5; transform: translateY(-50%) scale(1); }
+          to   { opacity: 1;   transform: translateY(-50%) scale(1.2); }
+        }
+        /* ── Click ripple ──────────────────────────────────── */
+        .ripple-wave {
+          position: absolute; border-radius: 50%; pointer-events: none;
+          background: rgba(255,255,255,0.3);
+          transform: scale(0); animation: ripple-burst 0.55s ease-out forwards;
+        }
+        @keyframes ripple-burst { to { transform: scale(4.5); opacity: 0; } }
       `}</style>
 
       <div ref={containerRef} className="hero-container">
@@ -564,11 +619,25 @@ export const HorizonHeroSection: React.FC = () => {
 
           {/* Section 2 — Platform Features */}
           <section className="content-section">
-            <h2 className="section-heading">PLATFORM <span>FEATURES</span></h2>
-            <p className="section-sub">Everything built into Suraksh</p>
-            <div className="features-grid">
-              {FEATURES.map((f) => (
+            <div className="celestial-left" />
+            <div className="celestial-right" />
+            <h2 className="section-heading" style={{ position: 'relative', zIndex: 1 }}>PLATFORM <span>FEATURES</span></h2>
+            <p className="section-sub" style={{ position: 'relative', zIndex: 1 }}>Everything built into Suraksh</p>
+            <div className="features-grid" style={{ position: 'relative', zIndex: 1 }}>
+              {FEATURES.map((f, fi) => (
                 <div key={f.title} className="feature-card">
+                  {[0,1,2,3,4,5].map((i) => (
+                    <span key={i} className="sparkle-dot" style={{
+                      left: `${12 + i * 14}%`,
+                      bottom: `${8 + (fi * 11 + i * 19) % 60}%`,
+                      width: i % 3 === 0 ? '5px' : '3px',
+                      height: i % 3 === 0 ? '5px' : '3px',
+                      backgroundColor: i % 2 === 0 ? '#d4af37' : '#10b981',
+                      boxShadow: `0 0 6px ${i % 2 === 0 ? '#d4af37' : '#10b981'}`,
+                      animationDuration: `${2.2 + i * 0.45}s`,
+                      animationDelay: `${(fi * 0.2 + i * 0.38) % 2.4}s`,
+                    }} />
+                  ))}
                   <h3>{f.title}</h3>
                   <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                     {f.items.map((item) => (
@@ -582,11 +651,25 @@ export const HorizonHeroSection: React.FC = () => {
 
           {/* Section 3 — Unique Features */}
           <section className="content-section">
-            <h2 className="section-heading">WHY <span>SURAKSH</span></h2>
-            <p className="section-sub">Unique features built for the modern deal</p>
-            <div className="unique-grid">
-              {UNIQUE_FEATURES.map((f) => (
+            <div className="celestial-left" style={{ background: 'radial-gradient(ellipse at center, rgba(14,165,233,0.22) 0%, transparent 70%)' }} />
+            <div className="celestial-right" style={{ background: 'radial-gradient(ellipse at center, rgba(212,175,55,0.22) 0%, transparent 70%)' }} />
+            <h2 className="section-heading" style={{ position: 'relative', zIndex: 1 }}>WHY <span>SURAKSH</span></h2>
+            <p className="section-sub" style={{ position: 'relative', zIndex: 1 }}>Unique features built for the modern deal</p>
+            <div className="unique-grid" style={{ position: 'relative', zIndex: 1 }}>
+              {UNIQUE_FEATURES.map((f, fi) => (
                 <div key={f.num} className="unique-card">
+                  {[0,1,2,3,4].map((i) => (
+                    <span key={i} className="sparkle-dot" style={{
+                      left: `${10 + i * 18}%`,
+                      bottom: `${12 + (fi * 13 + i * 21) % 65}%`,
+                      width: i % 2 === 0 ? '4px' : '3px',
+                      height: i % 2 === 0 ? '4px' : '3px',
+                      backgroundColor: i % 2 === 0 ? '#0ea5e9' : '#d4af37',
+                      boxShadow: `0 0 6px ${i % 2 === 0 ? '#0ea5e9' : '#d4af37'}`,
+                      animationDuration: `${2.4 + i * 0.5}s`,
+                      animationDelay: `${(fi * 0.25 + i * 0.42) % 2.8}s`,
+                    }} />
+                  ))}
                   <div className="unique-num">{f.num}</div>
                   <div className="unique-title">{f.title}</div>
                   <div className="unique-desc">{f.desc}</div>
