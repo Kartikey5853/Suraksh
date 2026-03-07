@@ -1,14 +1,23 @@
-from passlib.context import CryptContext
+import bcrypt
 
-_pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# bcrypt hard-limits input to 72 bytes.  Slicing a Python *str* at [:72]
+# counts characters, not bytes — a single emoji is 4 bytes, so a
+# 72-char password can exceed the limit.  Always truncate the *bytes*
+# representation before passing it to bcrypt.
+_BCRYPT_MAX_BYTES = 72
+
+
+def _prepare(plain: str) -> bytes:
+    """Encode to UTF-8 and truncate to the bcrypt byte limit."""
+    return plain.encode("utf-8")[:_BCRYPT_MAX_BYTES]
 
 
 def hash_password(plain: str) -> str:
-    # bcrypt only supports passwords up to 72 bytes
-    # Truncate to 72 characters (assuming UTF-8, this is safe for ASCII)
-    return _pwd_context.hash(plain[:72])
+    """Return a bcrypt hash string suitable for storing in the database."""
+    return bcrypt.hashpw(_prepare(plain), bcrypt.gensalt()).decode("utf-8")
 
 
 def verify_password(plain: str, hashed: str) -> bool:
-    return _pwd_context.verify(plain, hashed)
+    """Return True if *plain* matches the stored bcrypt *hashed* string."""
+    return bcrypt.checkpw(_prepare(plain), hashed.encode("utf-8"))
 
