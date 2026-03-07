@@ -39,11 +39,7 @@ const AdminLayout = ({ children }: { children: ReactNode }) => {
               onClick={() => navigate("/admin/dashboard")}
               className="hover:bg-accent flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 transition-colors"
             >
-              <svg viewBox="0 0 40 40" className="w-5 h-5 shrink-0">
-                <polygon points="20,4 6,34 34,34" fill="none" stroke="hsl(var(--primary))" strokeWidth="2.5" />
-                <polygon points="20,12 12,30 28,30" fill="hsl(var(--accent))" opacity="0.8" />
-              </svg>
-              <span className="font-mono font-bold text-sm text-foreground">ADMIN</span>
+              <span style={{ fontFamily: "'Samarkan', serif", fontSize: "1.35rem", letterSpacing: "0.05em", color: "hsl(var(--primary))" }}>Suraksh</span>
               {role && (
                 <span className="text-[10px] text-muted-foreground capitalize ml-1 bg-muted px-1.5 py-0.5 rounded-full">
                   {role}

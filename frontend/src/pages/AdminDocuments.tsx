@@ -34,6 +34,19 @@ const EVENT_LABELS: Record<string, string> = {
 
 const VC_TYPES = ["Investment Agreement", "SAFE Agreement", "SHA", "Term Sheet"];
 
+const renderDocContent = (content: string) =>
+  content.split('\n').map((line, i) => {
+    const trimmed = line.trim();
+    if (!trimmed) return <div key={i} className="h-3" />;
+    const isMainHeading = trimmed === trimmed.toUpperCase() && trimmed.length > 3 && trimmed.length < 100 && /[A-Z]/.test(trimmed);
+    const isSubHeading = !isMainHeading && /^(\d+\.\s+[A-Z]|[A-Z][A-Z a-z]+:)/.test(trimmed) && trimmed.length < 120;
+    const isBullet = /^[\s]*[-\u2022*]\s/.test(line);
+    if (isMainHeading) return <h2 key={i} className="text-sm font-bold text-gray-900 mt-6 mb-2 uppercase tracking-wide border-b border-gray-200 pb-1">{trimmed}</h2>;
+    if (isSubHeading) return <h3 key={i} className="text-sm font-semibold text-gray-800 mt-4 mb-1">{trimmed}</h3>;
+    if (isBullet) return <li key={i} className="text-sm text-gray-700 leading-relaxed ml-4 mb-0.5 list-disc">{trimmed.replace(/^[\s]*[-\u2022*]\s+/, '')}</li>;
+    return <p key={i} className="text-sm text-gray-700 leading-relaxed mb-1">{trimmed}</p>;
+  });
+
 const AdminDocuments = () => {
   const [docTab, setDocTab] = useState<"agreements" | "documents">("agreements");
   const [agreements, setAgreements] = useState<any[]>([]);
@@ -337,9 +350,11 @@ const AdminDocuments = () => {
 
                 {/* Content tab */}
                 {contentTab === "content" && (
-                  <pre className="text-xs font-mono bg-muted/40 rounded-xl p-4 whitespace-pre-wrap max-h-80 overflow-y-auto text-foreground">
-                    {detailAg.content || "No content available."}
-                  </pre>
+                  <div className="bg-gray-100 rounded-xl p-4 max-h-80 overflow-y-auto">
+                    <div className="bg-white shadow-md rounded-sm mx-auto" style={{ padding: '32px 40px', fontFamily: "'Georgia','Times New Roman',serif" }}>
+                      {renderDocContent(detailAg.content || "No content available.")}
+                    </div>
+                  </div>
                 )}
 
                 {/* Key Points tab */}
@@ -453,9 +468,11 @@ const AdminDocuments = () => {
                 {docDetail.content && (
                   <div>
                     <p className="text-xs text-muted-foreground uppercase font-medium mb-2">Content</p>
-                    <pre className="text-xs font-mono bg-muted/40 rounded-xl p-4 whitespace-pre-wrap max-h-64 overflow-y-auto text-foreground">
-                      {docDetail.content}
-                    </pre>
+                    <div className="bg-gray-100 rounded-xl p-4 max-h-64 overflow-y-auto">
+                      <div className="bg-white shadow-md rounded-sm mx-auto" style={{ padding: '28px 36px', fontFamily: "'Georgia','Times New Roman',serif" }}>
+                        {renderDocContent(docDetail.content)}
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>

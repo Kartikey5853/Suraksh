@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import {
@@ -85,6 +85,9 @@ const UserDashboard = () => {
   const [showRejectInput, setShowRejectInput] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
   const [rejecting, setRejecting] = useState(false);
+  // inline signature canvas
+  const sigCanvasRef = useRef<HTMLCanvasElement>(null);
+  const [sigIsDrawing, setSigIsDrawing] = useState(false);
 
   const user = getStoredUser();
 
@@ -209,6 +212,40 @@ const UserDashboard = () => {
       setProfileMsg("Failed to update profile.");
     }
     setProfileSaving(false);
+  };
+
+  /* ── Inline signature-canvas handlers ───────────── */
+  const startSignDraw = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const canvas = sigCanvasRef.current; if (!canvas) return;
+    const ctx = canvas.getContext("2d"); if (!ctx) return;
+    setSigIsDrawing(true);
+    const r = canvas.getBoundingClientRect();
+    ctx.beginPath();
+    ctx.moveTo((e.clientX - r.left) * (canvas.width / r.width), (e.clientY - r.top) * (canvas.height / r.height));
+  };
+  const signDraw = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!sigIsDrawing) return;
+    const canvas = sigCanvasRef.current; if (!canvas) return;
+    const ctx = canvas.getContext("2d"); if (!ctx) return;
+    const r = canvas.getBoundingClientRect();
+    ctx.lineWidth = 2.5; ctx.lineCap = "round"; ctx.strokeStyle = "#1a1a2e";
+    ctx.lineTo((e.clientX - r.left) * (canvas.width / r.width), (e.clientY - r.top) * (canvas.height / r.height));
+    ctx.stroke();
+  };
+  const stopSignDraw = () => setSigIsDrawing(false);
+  const clearSignCanvas = () => {
+    const c = sigCanvasRef.current;
+    c?.getContext("2d")?.clearRect(0, 0, c.width, c.height);
+  };
+  const handleSignWithCanvas = async () => {
+    if (!viewingAgreement) return;
+    const canvas = sigCanvasRef.current;
+    if (canvas) {
+      const sigData = canvas.toDataURL("image/png");
+      try { await userApi.saveSignature(sigData); } catch {}
+      setSignature(sigData);
+    }
+    await handleSign(viewingAgreement.id);
   };
 
   const renderDocContent = (content: string) => {
@@ -743,6 +780,66 @@ const UserDashboard = () => {
                 </div>
               </div>
 
+              {/* ── Sign Here Panel ────────────────────── */}
+              {!viewingAgreement.is_signed && viewingAgreement.status !== "rejected" && !showRejectInput && (
+                <div className="border-t border-border bg-muted/20 p-5 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Pen className="w-4 h-4 text-primary" />
+                    <p className="text-sm font-semibold text-foreground">Sign Document</p>
+                    {!isVerified && <span className="text-xs text-yellow-500 ml-2">Complete identity verification first</span>}
+                  </div>
+                  {signature ? (
+                    <div className="flex flex-col sm:flex-row gap-4 items-center">
+                      <div className="flex-1 border-2 border-dashed border-border rounded-xl bg-white flex items-center justify-center min-h-[80px] p-3">
+                        <img src={signature} alt="Your signature" className="max-h-16 max-w-full object-contain" />
+                      </div>
+                      <div className="flex flex-col gap-2 shrink-0">
+                        <Button
+                          onClick={() => handleSign(viewingAgreement.id)}
+                          disabled={signing || !isVerified}
+                          title={!isVerified ? "Complete verification first" : undefined}
+                          className="gap-2"
+                        >
+                          {signing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Pen className="w-4 h-4" />}
+                          Sign &amp; Submit
+                        </Button>
+                        <Button variant="ghost" size="sm" className="text-xs text-muted-foreground" onClick={() => navigate("/user/signature")}>
+                          Change Signature
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <p className="text-xs text-muted-foreground">No signature on file. Draw your signature in the box below:</p>
+                      <div className="border-2 border-dashed border-border rounded-xl bg-white overflow-hidden">
+                        <canvas
+                          ref={sigCanvasRef}
+                          width={700}
+                          height={120}
+                          className="w-full touch-none cursor-crosshair block"
+                          onMouseDown={startSignDraw}
+                          onMouseMove={signDraw}
+                          onMouseUp={stopSignDraw}
+                          onMouseLeave={stopSignDraw}
+                        />
+                      </div>
+                      <div className="flex gap-2">
+                        <Button size="sm" variant="outline" onClick={clearSignCanvas} className="text-xs">Clear</Button>
+                        <Button
+                          size="sm"
+                          disabled={signing || !isVerified}
+                          onClick={handleSignWithCanvas}
+                          className="gap-1.5"
+                        >
+                          {signing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Pen className="w-3.5 h-3.5" />}
+                          Sign &amp; Submit
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Reject reason input */}
               {showRejectInput && (
                 <div className="px-5 pb-3 border-t border-border bg-destructive/5">
@@ -773,54 +870,37 @@ const UserDashboard = () => {
               )}
 
               {/* Footer */}
-              <div className="p-5 border-t border-border flex items-center justify-between gap-4 flex-wrap">
-                {viewingAgreement.is_signed ? (
-                  <div className="flex items-center gap-3 flex-wrap">
-                    <div className="flex items-center gap-2 text-accent">
-                      <CheckCircle className="w-5 h-5" />
-                      <span className="text-sm font-medium">Signed on {viewingAgreement.signed_at ? new Date(viewingAgreement.signed_at).toLocaleDateString() : "—"}</span>
-                      {signature && <img src={signature} alt="sig" className="h-8 ml-4 opacity-80 object-contain" />}
-                    </div>
-                    <Button size="sm" variant="outline" className="text-xs gap-1.5" onClick={() => handlePrintAgreement(viewingAgreement)}>
-                      <Printer className="w-3.5 h-3.5" /> Print / Download
-                    </Button>
-                  </div>
-                ) : viewingAgreement.status === "rejected" ? (
-                  <div className="text-destructive text-sm flex items-center gap-2">
-                    <XCircle className="w-4 h-4" />
-                    <span>Rejected{viewingAgreement.rejection_reason ? `: ${viewingAgreement.rejection_reason}`: ""}</span>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-3 flex-wrap">
-                    {signature && (
-                      <div className="flex items-center gap-2 text-muted-foreground text-xs">
-                        <span>Your signature:</span>
-                        <img src={signature} alt="sig" className="h-7 object-contain opacity-70" />
+              <div className="p-4 border-t border-border flex items-center justify-between gap-3 flex-wrap">
+                <div className="flex items-center gap-2 flex-wrap">
+                  {viewingAgreement.is_signed && (
+                    <>
+                      <div className="flex items-center gap-2 text-green-600">
+                        <CheckCircle className="w-5 h-5" />
+                        <span className="text-sm font-medium">Signed on {viewingAgreement.signed_at ? new Date(viewingAgreement.signed_at).toLocaleDateString() : "—"}</span>
+                        {viewingAgreement.signature_snapshot && <img src={viewingAgreement.signature_snapshot} alt="sig" className="h-8 ml-4 opacity-80 object-contain" />}
                       </div>
-                    )}
-                    {!showRejectInput && (
-                      <>
-                        <Button
-                          onClick={() => handleSign(viewingAgreement.id)}
-                          disabled={signing || !isVerified}
-                          title={!isVerified ? "Complete verification first" : undefined}
-                          className="gap-1.5"
-                        >
-                          {signing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Pen className="w-4 h-4" />}
-                          Sign Agreement
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="text-xs text-destructive border-destructive/30 hover:bg-destructive/10"
-                          onClick={() => setShowRejectInput(true)}
-                        >
-                          <XCircle className="w-3.5 h-3.5 mr-1" /> Reject
-                        </Button>
-                      </>
-                    )}
-                  </div>
-                )}
+                      <Button size="sm" variant="outline" className="text-xs gap-1.5" onClick={() => handlePrintAgreement(viewingAgreement)}>
+                        <Printer className="w-3.5 h-3.5" /> Print / Download
+                      </Button>
+                    </>
+                  )}
+                  {viewingAgreement.status === "rejected" && (
+                    <div className="text-destructive text-sm flex items-center gap-2">
+                      <XCircle className="w-4 h-4" />
+                      <span>Rejected{viewingAgreement.rejection_reason ? `: ${viewingAgreement.rejection_reason}` : ""}</span>
+                    </div>
+                  )}
+                  {!viewingAgreement.is_signed && viewingAgreement.status !== "rejected" && !showRejectInput && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-xs text-destructive border-destructive/30 hover:bg-destructive/10"
+                      onClick={() => setShowRejectInput(true)}
+                    >
+                      <XCircle className="w-3.5 h-3.5 mr-1" /> Reject
+                    </Button>
+                  )}
+                </div>
                 <Button variant="outline" size="sm" onClick={() => { setViewingAgreement(null); setShowRejectInput(false); setRejectReason(""); }}>Close</Button>
               </div>
             </motion.div>
