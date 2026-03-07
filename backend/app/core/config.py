@@ -33,6 +33,9 @@ class Settings(BaseSettings):
     # ── CORS ───────────────────────────────────────────────────────────────────
     ALLOWED_ORIGINS: list[str] = ["*"]
 
+    # ── Gemini AI ──────────────────────────────────────────────────────────────
+    GEMINI_API_KEY: str = ""
+
     # ── Role registration codes ────────────────────────────────────────────────
     # Format: role -> invite code (change before production)
     ROLE_CODES: dict = {

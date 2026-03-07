@@ -72,6 +72,13 @@ def init_db() -> None:
     # We guard each statement with a try/except so it's idempotent.
     _add_column_if_missing("agreements", "rejection_reason", "TEXT")
     _add_column_if_missing("agreements", "source_request_id", "VARCHAR(36)")
+    # v2 — lawyer pipeline + AI key points + pipeline_stage
+    _add_column_if_missing("agreements", "pipeline_stage", "VARCHAR(30) DEFAULT 'draft'")
+    _add_column_if_missing("agreements", "lawyer_id", "VARCHAR(36)")
+    _add_column_if_missing("agreements", "lawyer_notes", "TEXT")
+    _add_column_if_missing("agreements", "lawyer_status", "VARCHAR(20)")
+    _add_column_if_missing("agreements", "lawyer_reviewed_at", "DATETIME")
+    _add_column_if_missing("agreements", "key_points", "TEXT")
 
 
 def _add_column_if_missing(table: str, column: str, col_type: str) -> None:

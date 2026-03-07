@@ -2,15 +2,17 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import {
-  LayoutDashboard, FileText, Clock, UserCircle, LogOut,
+  FileText, Clock,
   CheckCircle, AlertTriangle, Bell, PlusCircle, ChevronDown,
   ChevronRight, Loader2, X, FileSignature, Pen, Printer,
-  ShieldAlert, XCircle, ArrowLeft
+  ShieldAlert, XCircle, ArrowLeft, ShieldCheck
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { GlowingEffect } from "@/components/ui/glowing-effect";
+import { FloatingHeader } from "@/components/ui/floating-header";
 import { userApi, agreementApi, verificationApi, clearSession, getStoredUser } from "@/lib/api";
 
 // ── Document catalogue ─────────────────────────────────────────────────────────
@@ -37,19 +39,18 @@ const DOC_CATALOGUE = [
   },
 ];
 
-type Tab = "overview" | "documents" | "agreements" | "profile";
+type Tab = "overview" | "documents" | "agreements" | "profile" | "verification";
 
-const navItems: { label: string; icon: any; tab: Tab }[] = [
-  { label: "Dashboard", icon: LayoutDashboard, tab: "overview" },
-  { label: "My Documents", icon: FileText, tab: "documents" },
-  { label: "Pending Agreements", icon: Clock, tab: "agreements" },
-  { label: "Profile", icon: UserCircle, tab: "profile" },
+const navLinks = [
+  { label: "Dashboard", tab: "overview" },
+  { label: "Pending Agreements", tab: "agreements" },
+  { label: "My Verification", tab: "verification" },
+  { label: "Profile", tab: "profile" },
 ];
 
 const UserDashboard = () => {
   const navigate = useNavigate();
   const [tab, setTab] = useState<Tab>("overview");
-  const [sidebarOpen, setSidebarOpen] = useState(true);
 
   // data
   const [profile, setProfile] = useState<any>(null);
@@ -59,6 +60,8 @@ const UserDashboard = () => {
   const [agreements, setAgreements] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [verificationStatus, setVerificationStatus] = useState<any>(null);
+  const [verificationDetails, setVerificationDetails] = useState<any>(null);
+  const [verificationDetailsLoading, setVerificationDetailsLoading] = useState(false);
 
   // profile form
   const [editName, setEditName] = useState("");
@@ -109,6 +112,16 @@ const UserDashboard = () => {
   };
 
   useEffect(() => { loadAll(); }, []);
+
+  useEffect(() => {
+    if (tab === "verification" && !verificationDetails) {
+      setVerificationDetailsLoading(true);
+      verificationApi.getMyDetails()
+        .then((r) => setVerificationDetails(r.data))
+        .catch(() => setVerificationDetails({ found: false }))
+        .finally(() => setVerificationDetailsLoading(false));
+    }
+  }, [tab]);
 
   const handleLogout = () => { clearSession(); navigate("/"); };
 
@@ -198,94 +211,46 @@ const UserDashboard = () => {
     setProfileSaving(false);
   };
 
+  const renderDocContent = (content: string) => {
+    return content.split('\n').map((line, i) => {
+      const trimmed = line.trim();
+      if (!trimmed) return <div key={i} className="h-3" />;
+      const isMainHeading = trimmed === trimmed.toUpperCase() && trimmed.length > 3 && trimmed.length < 100 && /[A-Z]/.test(trimmed);
+      const isSubHeading = !isMainHeading && /^(\d+\.\s+[A-Z]|[A-Z][A-Z a-z]+:)/.test(trimmed) && trimmed.length < 120;
+      const isBullet = /^[\s]*[-•*]\s/.test(line);
+      if (isMainHeading) return <h2 key={i} className="text-sm font-bold text-gray-900 mt-6 mb-2 uppercase tracking-wide border-b border-gray-200 pb-1">{trimmed}</h2>;
+      if (isSubHeading) return <h3 key={i} className="text-sm font-semibold text-gray-800 mt-4 mb-1">{trimmed}</h3>;
+      if (isBullet) return <li key={i} className="text-sm text-gray-700 leading-relaxed ml-4 mb-0.5 list-disc">{trimmed.replace(/^[\s]*[-•*]\s+/, '')}</li>;
+      return <p key={i} className="text-sm text-gray-700 leading-relaxed mb-1">{trimmed}</p>;
+    });
+  };
+
   const pendingAgreements = agreements.filter((a) => !a.is_signed && a.status === "sent");
   const signedAgreements = agreements.filter((a) => a.is_signed);
   const isVerified = verificationStatus?.is_verified === true;
 
   return (
-    <div className="min-h-screen flex bg-background">
-      {/* Sidebar */}
-      <motion.aside
-        className="bg-suraksh-navy border-r border-suraksh-steel/20 flex flex-col shrink-0"
-        animate={{ width: sidebarOpen ? 260 : 72 }}
-        transition={{ duration: 0.3 }}
-      >
-        <div className="p-4 flex items-center gap-3 border-b border-suraksh-steel/20">
-          <svg viewBox="0 0 40 40" className="w-7 h-7 shrink-0">
-            <polygon points="20,4 6,34 34,34" fill="none" stroke="hsl(210,100%,50%)" strokeWidth="2" />
-            <polygon points="20,12 12,30 28,30" fill="hsl(175,70%,40%)" opacity="0.6" />
-          </svg>
-          {sidebarOpen && <span className="font-display font-semibold tracking-wider text-suraksh-glow text-sm">SURAKSH</span>}
-        </div>
-
-        <nav className="flex-1 py-4 px-2 space-y-1">
-          {navItems.map((item) => (
-            <button
-              key={item.tab}
-              onClick={() => setTab(item.tab)}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
-                tab === item.tab
-                  ? "bg-suraksh-steel/20 text-suraksh-glow"
-                  : "text-suraksh-slate hover:bg-suraksh-steel/10 hover:text-primary-foreground"
-              }`}
-            >
-              <item.icon className="w-4 h-4 shrink-0" />
-              {sidebarOpen && (
-                <span className="flex-1 text-left">
-                  {item.label}
-                  {item.tab === "agreements" && pendingAgreements.length > 0 && (
-                    <span className="ml-2 px-1.5 py-0.5 rounded-full bg-primary text-primary-foreground text-xs">
-                      {pendingAgreements.length}
-                    </span>
-                  )}
-                </span>
-              )}
-            </button>
-          ))}
-        </nav>
-
-        <div className="p-2 border-t border-suraksh-steel/20">
-          <button
-            onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-suraksh-slate hover:bg-suraksh-steel/10 hover:text-primary-foreground transition-colors"
-          >
-            <LogOut className="w-4 h-4 shrink-0" />
-            {sidebarOpen && <span>Logout</span>}
-          </button>
-        </div>
-      </motion.aside>
+    <div className="user-theme min-h-screen bg-background">
+      {/* Top floating nav */}
+      <div className="px-4 pt-4">
+        <FloatingHeader
+          links={navLinks}
+          activeTab={tab}
+          onTabChange={(t) => setTab(t as Tab)}
+          pendingCount={pendingAgreements.length}
+        />
+      </div>
 
       {/* Main */}
-      <main className="flex-1 p-8 overflow-auto">
+      <main className="p-6 md:p-8 max-w-6xl mx-auto">
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
 
-          {/* ── Verification Banner ────────────────── */}
-          {!isVerified && (
-            <div className="mb-5 flex items-center gap-3 rounded-xl border border-yellow-500/40 bg-yellow-500/10 px-5 py-3">
-              <ShieldAlert className="w-5 h-5 text-yellow-400 shrink-0" />
-              <div className="flex-1">
-                <p className="text-sm font-medium text-yellow-300">Identity verification incomplete</p>
-                <p className="text-xs text-yellow-400/80 mt-0.5">
-                  {verificationStatus?.aadhaar_submitted
-                    ? "Your Aadhaar is under admin review. Document requests and signing are locked until approved."
-                    : "You must complete identity verification before making document requests or signing agreements."}
-                </p>
-              </div>
-              <Button
-                size="sm"
-                variant="outline"
-                className="text-xs border-yellow-500/50 text-yellow-300 hover:bg-yellow-500/20 shrink-0"
-                onClick={() => navigate("/user/verification")}
-              >
-                Complete Verification
-              </Button>
-            </div>
-          )}
 
-          <div className="mb-6 flex items-center justify-between">
+
+            <div className="mb-6 flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-display font-bold text-foreground">
-                {tab === "overview" ? "Dashboard" : tab === "documents" ? "My Documents" : tab === "agreements" ? "Pending Agreements" : "Profile"}
+                {tab === "overview" ? "Dashboard" : tab === "documents" ? "My Documents" : tab === "agreements" ? "Pending Agreements" : tab === "verification" ? "My Verification" : "Profile"}
               </h1>
               <p className="text-sm text-muted-foreground mt-1">
                 Welcome back{profile?.name ? `, ${profile.name}` : user?.name ? `, ${user.name}` : ""}
@@ -308,25 +273,22 @@ const UserDashboard = () => {
                   <PlusCircle className="w-3.5 h-3.5" /> Request Document
                 </Button>
               )}
-              <Button variant="outline" size="sm" onClick={() => setSidebarOpen(!sidebarOpen)}>
-                {sidebarOpen ? "Collapse" : "Expand"}
-              </Button>
             </div>
           </div>
 
           {/* ── Overview ───────────────────────────── */}
           {tab === "overview" && (
             <motion.div key="overview" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-8">
+              <div className="bento-grid grid-cols-2 md:grid-cols-4 mb-8">
                 <DashboardCard icon={Clock} label="Pending to Sign" value={String(pendingAgreements.length)} color="text-primary" />
                 <DashboardCard icon={FileText} label="My Documents" value={String(documents.length)} color="text-foreground" />
                 <DashboardCard icon={Bell} label="Doc Requests" value={String(docRequests.length)} color="text-destructive" />
-                <DashboardCard icon={CheckCircle} label="Signed" value={String(signedAgreements.length)} color="text-accent" />
+                <DashboardCard icon={CheckCircle} label="Signed" value={String(signedAgreements.length)} color="text-green-500" />
               </div>
 
-              <div className="grid gap-6 lg:grid-cols-2">
+              <div className="bento-grid lg:grid-cols-2">
                 {/* Pending agreements preview */}
-                <div className="rounded-xl border border-border bg-card p-6">
+                <div className="bento-card bg-card p-6">
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="font-display font-semibold text-foreground">Pending Agreements</h3>
                     <button onClick={() => setTab("agreements")} className="text-xs text-primary">View all</button>
@@ -353,7 +315,7 @@ const UserDashboard = () => {
                 </div>
 
                 {/* Recent doc requests */}
-                <div className="rounded-xl border border-border bg-card p-6">
+                <div className="bento-card bg-card p-6">
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="font-display font-semibold text-foreground">My Document Requests</h3>
                     <button
@@ -377,7 +339,7 @@ const UserDashboard = () => {
                               <p className="text-xs text-muted-foreground">{r.doc_category}</p>
                             </div>
                             <span className={`text-xs px-2 py-0.5 rounded-full ${
-                              r.status === "approved" ? "bg-accent/20 text-accent" :
+                              r.status === "approved" ? "bg-green-500/20 text-green-400" :
                               r.status === "rejected" ? "bg-destructive/20 text-destructive" :
                               r.status === "in_review" ? "bg-primary/20 text-primary" : "bg-muted text-muted-foreground"
                             }`}>{r.status}</span>
@@ -420,7 +382,7 @@ const UserDashboard = () => {
                           <p className="text-xs text-muted-foreground">{doc.created_at ? new Date(doc.created_at).toLocaleDateString() : ""}</p>
                         </div>
                         <span className={`text-xs px-2 py-0.5 rounded-full ${
-                          doc.is_signed ? "bg-accent/20 text-accent" :
+                          doc.is_signed ? "bg-green-500/20 text-green-400" :
                           doc.status === "rejected" ? "bg-destructive/20 text-destructive" :
                           "bg-muted text-muted-foreground"
                         }`}>{doc.is_signed ? "Signed" : doc.status}</span>
@@ -480,7 +442,7 @@ const UserDashboard = () => {
                           <p className="text-xs text-muted-foreground">{ag.doc_type} · Signed {ag.signed_at ? new Date(ag.signed_at).toLocaleDateString() : ""}</p>
                         </div>
                         <div className="flex items-center gap-1.5">
-                          <CheckCircle className="w-4 h-4 text-accent" />
+                          <CheckCircle className="w-4 h-4 text-green-500" />
                           <button onClick={() => setViewingAgreement(ag)} className="text-xs text-primary hover:underline">View</button>
                           <button onClick={() => handlePrintAgreement(ag)} className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-0.5">
                             <Printer className="w-3 h-3" /> Print
@@ -555,6 +517,78 @@ const UserDashboard = () => {
                   )}
                 </div>
               </div>
+            </motion.div>
+          )}
+
+          {/* ── My Verification ─────────────────────── */}
+          {tab === "verification" && (
+            <motion.div key="verification" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-5">
+              {verificationDetailsLoading ? (
+                <div className="space-y-4">
+                  {[1, 2, 3].map((i) => <div key={i} className="h-20 rounded-xl bg-muted/20 animate-pulse" />)}
+                </div>
+              ) : !verificationDetails?.found ? (
+                <div className="rounded-xl border border-border bg-card p-8 text-center">
+                  <XCircle className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
+                  <p className="text-foreground font-medium mb-1">No verification submitted yet</p>
+                  <p className="text-sm text-muted-foreground mb-6">Submit your identity documents to unlock document requests and agreement signing.</p>
+                  <Button onClick={() => navigate("/user/verification")}>Start Verification</Button>
+                </div>
+              ) : (
+                <>
+                  <div className={`rounded-xl border p-4 flex items-center gap-3 ${
+                    verificationDetails.is_valid
+                      ? "border-green-500/30 bg-green-500/10"
+                      : "border-yellow-500/30 bg-yellow-500/10"
+                  }`}>
+                    {verificationDetails.is_valid
+                      ? <CheckCircle className="w-5 h-5 text-green-400 shrink-0" />
+                      : <Clock className="w-5 h-5 text-yellow-400 shrink-0" />}
+                    <div className="flex-1">
+                      <p className={`font-semibold text-sm ${verificationDetails.is_valid ? "text-green-400" : "text-yellow-400"}`}>
+                        {verificationDetails.is_valid ? "Verification Approved" : "Pending Admin Review"}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {verificationDetails.is_valid
+                          ? `Approved on ${verificationDetails.verified_at ? new Date(verificationDetails.verified_at).toLocaleDateString() : "\u2014"}`
+                          : "Your documents are under review by our team."}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="rounded-xl border border-border bg-card divide-y divide-border">
+                    <div className="p-5 grid grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">Name</p>
+                        <p className="text-sm font-medium text-foreground">{verificationDetails.user_name}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">Email</p>
+                        <p className="text-sm font-medium text-foreground">{verificationDetails.user_email}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">Aadhaar Last 4</p>
+                        <p className="text-sm font-medium text-foreground tracking-widest">XXXX XXXX {verificationDetails.aadhaar_last4}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">Submitted</p>
+                        <p className="text-sm font-medium text-foreground">
+                          {verificationDetails.created_at ? new Date(verificationDetails.created_at).toLocaleDateString() : "\u2014"}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-3 sm:flex-row">
+                    <Button variant="outline" className="gap-2" onClick={() => navigate("/user/verification-details")}>
+                      <ShieldCheck className="w-4 h-4" /> View Full Details &amp; Documents
+                    </Button>
+                    {!verificationDetails.is_valid && (
+                      <Button variant="outline" onClick={() => navigate("/user/verification")}>
+                        Re-submit Documents
+                      </Button>
+                    )}
+                  </div>
+                </>
+              )}
             </motion.div>
           )}
         </motion.div>
@@ -680,7 +714,7 @@ const UserDashboard = () => {
           >
             <div className="absolute inset-0 bg-black/70" onClick={() => { setViewingAgreement(null); setShowRejectInput(false); setRejectReason(""); }} />
             <motion.div
-              className="relative w-full max-w-2xl bg-card rounded-2xl border border-border shadow-2xl flex flex-col max-h-[85vh]"
+              className="relative w-full max-w-5xl bg-card rounded-2xl border border-border shadow-2xl flex flex-col max-h-[90vh]"
               initial={{ scale: 0.95, y: 20 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.95, y: 20 }}
@@ -696,12 +730,16 @@ const UserDashboard = () => {
                 </button>
               </div>
 
-              {/* Document content — styled as PDF-like viewer */}
-              <div className="flex-1 overflow-y-auto p-6">
-                <div className="bg-white rounded-xl shadow-inner p-8 min-h-[300px]">
-                  <pre className="text-sm text-gray-800 whitespace-pre-wrap font-sans leading-relaxed">
-                    {viewingAgreement.content}
-                  </pre>
+              {/* Document content — Word document style */}
+              <div className="flex-1 overflow-y-auto bg-gray-100 p-6">
+                <div className="mx-auto max-w-3xl bg-white shadow-[0_4px_24px_rgba(0,0,0,0.15)] rounded-sm" style={{ padding: '64px 80px', minHeight: '500px', fontFamily: "'Georgia', 'Times New Roman', serif" }}>
+                  <div className="border-b-2 border-gray-800 pb-4 mb-6">
+                    <h1 className="text-xl font-bold text-gray-900 mb-1" style={{ fontFamily: "'Georgia', serif" }}>{viewingAgreement.title}</h1>
+                    <p className="text-xs text-gray-500">{viewingAgreement.doc_type} &middot; {viewingAgreement.doc_category} &middot; {viewingAgreement.created_at ? new Date(viewingAgreement.created_at).toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' }) : "\u2014"}</p>
+                  </div>
+                  <div className="leading-relaxed">
+                    {renderDocContent(viewingAgreement.content)}
+                  </div>
                 </div>
               </div>
 
@@ -794,12 +832,15 @@ const UserDashboard = () => {
 };
 
 const DashboardCard = ({ icon: Icon, label, value, color }: { icon: any; label: string; value: string; color: string }) => (
-  <div className="rounded-xl border border-border bg-card p-5">
-    <div className="flex items-center justify-between mb-3">
-      <Icon className={`w-5 h-5 ${color}`} />
-      <span className="text-xs text-muted-foreground uppercase tracking-wide">{label}</span>
+  <div className="bento-card bg-card p-5">
+    <GlowingEffect disabled={false} proximity={64} spread={40} />
+    <div className="relative z-10">
+      <div className="flex items-center justify-between mb-3">
+        <Icon className={`w-5 h-5 ${color}`} />
+        <span className="text-xs text-muted-foreground uppercase tracking-wide">{label}</span>
+      </div>
+      <p className={`text-2xl font-display font-bold ${color}`}>{value}</p>
     </div>
-    <p className={`text-2xl font-display font-bold ${color}`}>{value}</p>
   </div>
 );
 

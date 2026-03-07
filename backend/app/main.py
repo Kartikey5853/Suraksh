@@ -37,9 +37,28 @@ async def on_startup() -> None:
     """
     Run once when the server starts.
     Creates all SQLite tables for development.
+    Also runs lightweight column migrations for new fields (SQLite doesn't support IF NOT EXISTS in ALTER).
     TODO: Replace init_db() with Alembic migrations for production.
     """
     init_db()
+    # ── Lightweight column migrations ──────────────────────────────────────────
+    from app.db.database import engine
+    new_columns = [
+        ("agreements", "analysis_result", "TEXT"),
+        ("agreements", "user_analysis_result", "TEXT"),
+        ("aadhaar_verifications", "scan_score", "INTEGER"),
+        ("aadhaar_verifications", "face_submitted", "BOOLEAN DEFAULT 0"),
+        ("aadhaar_verifications", "id_card_path", "TEXT"),
+        ("aadhaar_verifications", "face_path", "TEXT"),
+    ]
+    with engine.connect() as conn:
+        for table, col, col_type in new_columns:
+            try:
+                conn.execute(__import__("sqlalchemy").text(f"ALTER TABLE {table} ADD COLUMN {col} {col_type}"))
+                conn.commit()
+            except Exception:
+                # Column already exists — safe to ignore
+                pass
 
 
 # ── Routers ───────────────────────────────────────────────────────────────────

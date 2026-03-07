@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Users, FileText, CheckCircle, Clock, Loader2, ChevronDown, ScrollText, X, Send } from "lucide-react";
+import { Users, FileText, CheckCircle, Clock, Loader2, ScrollText, X, Send, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { GlowingEffect } from "@/components/ui/glowing-effect";
 import AdminLayout from "@/components/AdminLayout";
 import { adminApi, agreementApi } from "@/lib/api";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -30,6 +31,7 @@ const AdminDashboard = () => {
   const [agContent, setAgContent] = useState("");
   const [sendingAg, setSendingAg] = useState(false);
   const [sendAgMsg, setSendAgMsg] = useState("");
+  const [userSearch, setUserSearch] = useState("");
 
   const loadData = async () => {
     setLoading(true);
@@ -116,15 +118,17 @@ const AdminDashboard = () => {
 
           {tab === "overview" && (
           <motion.div key="overview" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-8">
+            <div className="bento-grid grid-cols-2 md:grid-cols-4 mb-8">
               <StatCard icon={Users} label="Total Users" value={String(users.length)} trend={`${activeUsers} active`} />
               <StatCard icon={FileText} label="Doc Requests" value={String(docRequests.length)} trend={`${pendingRequests} pending`} />
               <StatCard icon={CheckCircle} label="Onboarded" value={String(users.filter((u) => u.is_onboarded).length)} trend="verified" />
               <StatCard icon={ScrollText} label="Signed Agreements" value={String(signedAgreements.length)} trend={`${pendingAgreements.length} awaiting`} />
             </div>
 
-            <div className="grid gap-6 lg:grid-cols-2">
-              <div className="rounded-xl border border-border bg-card p-6">
+            <div className="bento-grid lg:grid-cols-2">
+              <div className="bento-card bg-card p-6">
+                <GlowingEffect disabled={false} proximity={64} spread={40} />
+                <div className="relative z-10">
                 <h3 className="font-display font-semibold text-foreground mb-4">Users by Role</h3>
                 {ROLES.map((role) => {
                   const count = users.filter((u) => u.role === role).length;
@@ -135,9 +139,12 @@ const AdminDashboard = () => {
                     </div>
                   );
                 })}
+                </div>
               </div>
 
-              <div className="rounded-xl border border-border bg-card p-6">
+              <div className="bento-card bg-card p-6">
+                <GlowingEffect disabled={false} proximity={64} spread={40} />
+                <div className="relative z-10">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="font-display font-semibold text-foreground">Signed Agreements</h3>
                   <button onClick={() => navigate("/admin/agreements")} className="text-xs text-primary">View all</button>
@@ -151,13 +158,14 @@ const AdminDashboard = () => {
                         <p className="text-sm text-foreground">{ag.title}</p>
                         <p className="text-xs text-muted-foreground">{ag.doc_type}</p>
                       </div>
-                      <div className="flex items-center gap-1.5 text-accent">
+                      <div className="flex items-center gap-1.5 text-green-600">
                         <CheckCircle className="w-4 h-4" />
                         <span className="text-xs">{ag.signed_at ? new Date(ag.signed_at).toLocaleDateString() : ""}</span>
                       </div>
                     </div>
                   ))
                 )}
+                </div>
               </div>
             </div>
           </motion.div>
@@ -167,8 +175,17 @@ const AdminDashboard = () => {
         {tab === "users" && (
           <motion.div key="users" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
             <div className="rounded-xl border border-border bg-card overflow-hidden">
-              <div className="p-4 border-b border-border">
-                <h3 className="font-display font-semibold text-foreground">All Users</h3>
+              <div className="p-4 border-b border-border flex items-center gap-3">
+                <h3 className="font-display font-semibold text-foreground flex-1">All Users</h3>
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                  <Input
+                    placeholder="Search name or email…"
+                    className="pl-8 h-8 text-xs w-52"
+                    value={userSearch}
+                    onChange={(e) => setUserSearch(e.target.value)}
+                  />
+                </div>
               </div>
               {loading ? (
                 <div className="p-6 flex items-center gap-2 text-muted-foreground text-sm">
@@ -188,31 +205,26 @@ const AdminDashboard = () => {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border">
-                      {users.map((u) => (
+                      {users
+                        .filter((u) => {
+                          const q = userSearch.toLowerCase();
+                          return !q || u.name?.toLowerCase().includes(q) || u.email?.toLowerCase().includes(q);
+                        })
+                        .map((u) => (
                         <tr key={u.id} className="hover:bg-muted/20 transition-colors">
                           <td className="px-4 py-3 font-medium text-foreground">{u.name}</td>
                           <td className="px-4 py-3 text-muted-foreground">{u.email}</td>
                           <td className="px-4 py-3">
-                            <div className="relative inline-block">
-                              <select
-                                value={u.role}
-                                onChange={(e) => handleRoleChange(u.id, e.target.value)}
-                                disabled={updatingId === u.id}
-                                className="text-xs border border-border rounded-md px-2 py-1 bg-background text-foreground cursor-pointer pr-6 appearance-none"
-                              >
-                                {ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
-                              </select>
-                              <ChevronDown className="w-3 h-3 absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground" />
-                            </div>
+                            <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-primary/10 text-primary capitalize">{u.role}</span>
                           </td>
                           <td className="px-4 py-3">
                             {u.is_onboarded
-                              ? <CheckCircle className="w-4 h-4 text-accent" />
+                              ? <CheckCircle className="w-4 h-4 text-green-600" />
                               : <Clock className="w-4 h-4 text-muted-foreground" />
                             }
                           </td>
                           <td className="px-4 py-3">
-                            <span className={`px-2 py-0.5 rounded-full text-xs ${u.is_active ? "bg-accent/20 text-accent" : "bg-muted text-muted-foreground"}`}>
+                            <span className={`px-2 py-0.5 rounded-full text-xs ${u.is_active ? "bg-green-500/20 text-green-600" : "bg-muted text-muted-foreground"}`}>
                               {u.is_active ? "Active" : "Inactive"}
                             </span>
                           </td>
@@ -273,7 +285,7 @@ const AdminDashboard = () => {
                         </td>
                         <td className="px-4 py-3">
                           <span className={`px-2 py-0.5 rounded-full text-xs ${
-                            r.status === "approved" ? "bg-accent/20 text-accent" :
+                            r.status === "approved" ? "bg-green-500/20 text-green-400" :
                             r.status === "rejected" ? "bg-destructive/20 text-destructive" :
                             r.status === "in_review" ? "bg-primary/20 text-primary" :
                             "bg-muted text-muted-foreground"
@@ -355,7 +367,7 @@ const AdminDashboard = () => {
                     <Textarea className="mt-1 font-mono text-xs resize-none" rows={12} value={agContent} onChange={(e) => setAgContent(e.target.value)} />
                   </div>
                   {sendAgMsg && (
-                    <p className={`text-sm ${sendAgMsg.includes("success") ? "text-accent" : "text-destructive"}`}>{sendAgMsg}</p>
+                    <p className={`text-sm ${sendAgMsg.includes("success") ? "text-green-600" : "text-destructive"}`}>{sendAgMsg}</p>
                   )}
                   <div className="flex gap-2 pt-1">
                     <Button className="flex-1 gap-1.5" disabled={sendingAg || !agTitle.trim() || !agContent.trim()} onClick={handleSendAgreement}>
@@ -375,13 +387,16 @@ const AdminDashboard = () => {
 };
 
 const StatCard = ({ icon: Icon, label, value, trend }: { icon: any; label: string; value: string; trend: string }) => (
-  <div className="rounded-xl border border-border bg-card p-5">
-    <div className="flex items-center justify-between mb-3">
-      <Icon className="w-5 h-5 text-primary" />
-      <span className="text-xs font-medium text-muted-foreground italic">{trend}</span>
+  <div className="bento-card bg-card p-5">
+    <GlowingEffect disabled={false} proximity={64} spread={40} />
+    <div className="relative z-10">
+      <div className="flex items-center justify-between mb-3">
+        <Icon className="w-5 h-5 text-primary" />
+        <span className="text-xs font-medium text-muted-foreground italic">{trend}</span>
+      </div>
+      <p className="text-2xl font-display font-bold text-foreground">{value}</p>
+      <p className="text-xs text-muted-foreground mt-1">{label}</p>
     </div>
-    <p className="text-2xl font-display font-bold text-foreground">{value}</p>
-    <p className="text-xs text-muted-foreground mt-1">{label}</p>
   </div>
 );
 

@@ -91,9 +91,25 @@ export const verificationApi = {
     });
   },
 
+  submitFacePhoto: (file: File) => {
+    const form = new FormData();
+    form.append("file", file);
+    return api.post("/verification/face", form, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+  },
+
   getStatus: () => api.get("/verification/status"),
 
+  getMyDetails: () => api.get("/verification/my-details"),
+
   bypassAadhaar: () => api.post("/verification/bypass"),
+
+  /** Returns a URL to display the user's own ID card image */
+  idImageUrl: () => `${BASE_URL}/verification/image/id`,
+
+  /** Returns a URL to display the user's own face image */
+  faceImageUrl: () => `${BASE_URL}/verification/image/face`,
 };
 
 // ── User endpoints ────────────────────────────────────────────────────────────
@@ -134,9 +150,40 @@ export const agreementApi = {
     doc_type: string;
     doc_category?: string;
     sent_to?: string;
+    send_to_lawyer?: string;
+    key_points?: string;
   }) => api.post("/agreements", data),
   send: (id: string, user_id: string) =>
     api.post(`/agreements/${id}/send`, { user_id }),
+  sendToLawyer: (id: string, lawyer_id: string) =>
+    api.post(`/agreements/${id}/send-to-lawyer`, { lawyer_id }),
+  hold: (id: string, notes?: string) =>
+    api.post(`/agreements/${id}/hold`, { notes: notes ?? "" }),
+  resume: (id: string) =>
+    api.post(`/agreements/${id}/resume`),
+  getTimeline: (id: string) =>
+    api.get(`/agreements/${id}/timeline`),
+
+  // AI generation
+  generate: (data: { prompt: string; doc_type: string; doc_category?: string; title?: string }) =>
+    api.post("/agreements/generate", data),
+
+  // AI analysis / scoring
+  analyze: (data: { content: string; doc_type: string }) =>
+    api.post("/agreements/analyze", data),
+
+  // Pre-built template
+  getTemplate: (doc_type: string, doc_category?: string) =>
+    api.get(`/agreements/template?doc_type=${encodeURIComponent(doc_type)}&doc_category=${encodeURIComponent(doc_category ?? "")}`),
+
+  // Finalize (run AI + store result)
+  finalize: (id: string) => api.post(`/agreements/${id}/finalize`),
+  finalizeUser: (id: string) => api.post(`/agreements/${id}/finalize-user`),
+
+  // Lawyer
+  getLawyerPending: () => api.get("/agreements/lawyer/pending"),
+  lawyerReview: (id: string, action: "approve" | "reject", notes?: string) =>
+    api.post(`/agreements/${id}/lawyer-review`, { action, notes: notes ?? "" }),
 };
 
 // ── Admin endpoints ───────────────────────────────────────────────────────────
@@ -168,6 +215,10 @@ export const adminApi = {
   getVerifications: () => api.get("/admin/verifications"),
   approveVerification: (userId: string) => api.post(`/admin/verifications/${userId}/approve`),
   rejectVerification: (userId: string) => api.post(`/admin/verifications/${userId}/reject`),
+  /** URL to view a user's ID card image (admin) */
+  userIdImageUrl: (userId: string) => `${BASE_URL}/admin/verifications/${userId}/id-image`,
+  /** URL to view a user's face image (admin) */
+  userFaceImageUrl: (userId: string) => `${BASE_URL}/admin/verifications/${userId}/face-image`,
 };
 
 // ── Token helpers ─────────────────────────────────────────────────────────────

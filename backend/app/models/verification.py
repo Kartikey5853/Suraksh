@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, Column, DateTime, String, ForeignKey
+from sqlalchemy import Boolean, Column, DateTime, Integer, String, ForeignKey
 
 from app.db.database import Base
 
@@ -16,4 +16,10 @@ class AadhaarVerification(Base):
     is_valid = Column(Boolean, default=False)
     verified_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
+    # Gemini scan fields
+    scan_score = Column(Integer, nullable=True)          # 0-100 accuracy confidence
+    face_submitted = Column(Boolean, default=False)      # face photo received
+    # Stored file paths
+    id_card_path = Column(String(512), nullable=True)    # path to saved ID card image
+    face_path = Column(String(512), nullable=True)       # path to saved face/selfie image
 

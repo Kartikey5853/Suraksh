@@ -2,6 +2,7 @@ import uuid
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -252,6 +253,7 @@ def list_all_verifications(
     current_admin: User = Depends(get_current_admin),
     db: Session = Depends(get_db),
 ):
+    import os
     verifications = db.query(AadhaarVerification).all()
     results = []
     for v in verifications:
@@ -265,8 +267,38 @@ def list_all_verifications(
             "is_valid": v.is_valid,
             "verified_at": v.verified_at.isoformat() if v.verified_at else None,
             "created_at": v.created_at.isoformat() if v.created_at else None,
+            "scan_score": getattr(v, "scan_score", None),
+            "face_submitted": getattr(v, "face_submitted", False),
+            "has_id_card": bool(getattr(v, "id_card_path", None) and os.path.exists(v.id_card_path)),
+            "has_face": bool(getattr(v, "face_path", None) and os.path.exists(v.face_path)),
         })
     return results
+
+
+@router.get("/verifications/{user_id}/id-image", summary="Serve ID card image for a user")
+def get_user_id_image(
+    user_id: str,
+    current_admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    import os
+    v = db.query(AadhaarVerification).filter(AadhaarVerification.user_id == user_id).first()
+    if not v or not getattr(v, "id_card_path", None) or not os.path.exists(v.id_card_path):
+        raise HTTPException(status_code=404, detail="ID card image not found")
+    return FileResponse(v.id_card_path)
+
+
+@router.get("/verifications/{user_id}/face-image", summary="Serve face image for a user")
+def get_user_face_image(
+    user_id: str,
+    current_admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    import os
+    v = db.query(AadhaarVerification).filter(AadhaarVerification.user_id == user_id).first()
+    if not v or not getattr(v, "face_path", None) or not os.path.exists(v.face_path):
+        raise HTTPException(status_code=404, detail="Face image not found")
+    return FileResponse(v.face_path)
 
 
 @router.post("/verifications/{user_id}/approve")

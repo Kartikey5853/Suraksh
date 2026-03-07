@@ -1,72 +1,114 @@
-import { ReactNode } from "react";
+import { ReactNode, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import {
-  LayoutDashboard, Users, FileText, ShieldCheck, FilePlus, LogOut, ScrollText
-} from "lucide-react";
+import { LogOut, MenuIcon } from "lucide-react";
 import { clearSession, getStoredUser } from "@/lib/api";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetFooter } from "@/components/ui/sheet";
+import { cn } from "@/lib/utils";
 
 type Role = "admin" | "lawyer" | "associate" | "founder";
 
 const ALL_NAV = [
-  { label: "Dashboard",       icon: LayoutDashboard, path: "/admin/dashboard",        roles: ["admin","lawyer","associate","founder"] },
-  { label: "Agreements",      icon: ScrollText,       path: "/admin/agreements",       roles: ["admin","lawyer","associate"] },
-  { label: "Create Agreement",icon: FilePlus,         path: "/admin/create-agreement", roles: ["admin","lawyer"] },
-  { label: "User Management", icon: Users,            path: "/admin/users",            roles: ["admin"] },
-  { label: "Documents",       icon: FileText,         path: "/admin/documents",        roles: ["admin","lawyer","associate"] },
-  { label: "Verifications",   icon: ShieldCheck,      path: "/admin/verifications",    roles: ["admin"] },
+  { label: "Dashboard",        path: "/admin/dashboard",        roles: ["admin","lawyer","associate","founder"] },
+  { label: "Lawyer Review",    path: "/lawyer/dashboard",       roles: ["lawyer"] },
+  { label: "Agreements",       path: "/admin/agreements",       roles: ["admin","associate"] },
+  { label: "Create Agreement", path: "/admin/create-agreement", roles: ["admin","lawyer"] },
+  { label: "User Management",  path: "/admin/users",            roles: ["admin"] },
+  { label: "Documents",        path: "/admin/documents",        roles: ["admin","associate"] },
+  { label: "Verifications",    path: "/admin/verifications",    roles: ["admin"] },
 ];
 
 const AdminLayout = ({ children }: { children: ReactNode }) => {
-  const navigate = useNavigate();
-  const location = useLocation();
+  const navigate   = useNavigate();
+  const location   = useLocation();
+  const [open, setOpen] = useState(false);
   const user = getStoredUser();
   const role = (user?.role ?? "associate") as Role;
 
   const navItems = ALL_NAV.filter((item) => item.roles.includes(role));
-
   const handleLogout = () => { clearSession(); navigate("/"); };
 
   return (
-    <div className="min-h-screen flex bg-background">
-      <aside className="w-[260px] bg-suraksh-navy border-r border-suraksh-steel/20 flex flex-col shrink-0">
-        <div className="p-4 flex items-center gap-3 border-b border-suraksh-steel/20">
-          <svg viewBox="0 0 40 40" className="w-7 h-7 shrink-0">
-            <polygon points="20,4 6,34 34,34" fill="none" stroke="hsl(210,100%,50%)" strokeWidth="2" />
-            <polygon points="20,12 12,30 28,30" fill="hsl(175,70%,40%)" opacity="0.6" />
-          </svg>
-          <div>
-            <span className="font-display font-semibold tracking-wider text-suraksh-glow text-sm block">ADMIN</span>
-            <span className="text-xs text-suraksh-slate capitalize">{role}</span>
-          </div>
-        </div>
-        <nav className="flex-1 py-4 px-2 space-y-1">
-          {navItems.map((item) => {
-            const active = location.pathname === item.path;
-            return (
-              <button
-                key={item.path}
-                onClick={() => navigate(item.path)}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
-                  active ? "bg-suraksh-steel/20 text-suraksh-glow" : "text-suraksh-slate hover:bg-suraksh-steel/10 hover:text-primary-foreground"
-                }`}
-              >
-                <item.icon className="w-4 h-4 shrink-0" />
-                <span>{item.label}</span>
-              </button>
-            );
-          })}
-        </nav>
-        <div className="p-2 border-t border-suraksh-steel/20">
-          <button
-            onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-suraksh-slate hover:bg-suraksh-steel/10 hover:text-primary-foreground transition-colors"
-          >
-            <LogOut className="w-4 h-4 shrink-0" />
-            <span>Logout</span>
-          </button>
-        </div>
-      </aside>
-      <main className="flex-1 p-8 overflow-auto">{children}</main>
+    <div className="admin-theme min-h-screen bg-background">
+      {/* ── Floating top nav ── */}
+      <div className="px-4 pt-4">
+        <header className="sticky top-4 z-50 mx-auto w-full max-w-5xl rounded-xl border border-border shadow-lg bg-background/90 supports-[backdrop-filter]:bg-background/75 backdrop-blur-lg">
+          <nav className="flex items-center justify-between px-4 py-2">
+            {/* Logo */}
+            <button
+              onClick={() => navigate("/admin/dashboard")}
+              className="hover:bg-accent flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 transition-colors"
+            >
+              <svg viewBox="0 0 40 40" className="w-5 h-5 shrink-0">
+                <polygon points="20,4 6,34 34,34" fill="none" stroke="hsl(var(--primary))" strokeWidth="2.5" />
+                <polygon points="20,12 12,30 28,30" fill="hsl(var(--accent))" opacity="0.8" />
+              </svg>
+              <span className="font-mono font-bold text-sm text-foreground">ADMIN</span>
+              {role && (
+                <span className="text-[10px] text-muted-foreground capitalize ml-1 bg-muted px-1.5 py-0.5 rounded-full">
+                  {role}
+                </span>
+              )}
+            </button>
+
+            {/* Desktop nav */}
+            <div className="hidden items-center gap-1 lg:flex">
+              {navItems.map((item) => (
+                <button
+                  key={item.path}
+                  onClick={() => navigate(item.path)}
+                  className={cn(
+                    buttonVariants({ variant: "ghost", size: "sm" }),
+                    "text-xs relative",
+                    location.pathname === item.path && "bg-accent text-accent-foreground"
+                  )}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center gap-2">
+              <Button size="sm" variant="outline" onClick={handleLogout} className="hidden lg:flex gap-1.5 text-xs">
+                <LogOut className="w-3.5 h-3.5" /> Logout
+              </Button>
+
+              <Sheet open={open} onOpenChange={setOpen}>
+                <Button size="icon" variant="outline" onClick={() => setOpen(!open)} className="lg:hidden h-8 w-8">
+                  <MenuIcon className="w-4 h-4" />
+                </Button>
+                <SheetContent side="right" className="admin-theme w-64 flex flex-col">
+                  <div className="flex-1 py-6 space-y-1">
+                    {navItems.map((item) => (
+                      <button
+                        key={item.path}
+                        onClick={() => { navigate(item.path); setOpen(false); }}
+                        className={cn(
+                          "w-full text-left px-3 py-2.5 rounded-lg text-sm transition-colors",
+                          location.pathname === item.path
+                            ? "bg-accent text-accent-foreground font-medium"
+                            : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+                        )}
+                      >
+                        {item.label}
+                      </button>
+                    ))}
+                  </div>
+                  <SheetFooter>
+                    <Button variant="outline" size="sm" onClick={handleLogout} className="w-full gap-2">
+                      <LogOut className="w-4 h-4" /> Logout
+                    </Button>
+                  </SheetFooter>
+                </SheetContent>
+              </Sheet>
+            </div>
+          </nav>
+        </header>
+      </div>
+
+      {/* ── Page content ── */}
+      <main className="p-6 md:p-8 max-w-6xl mx-auto">{children}</main>
     </div>
   );
 };

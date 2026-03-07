@@ -5,6 +5,7 @@ import { Mail, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { EtherealShadow } from "@/components/ui/etheral-shadow";
 import { authApi, saveSession } from "@/lib/api";
 
 const UserLogin = () => {
@@ -34,107 +35,95 @@ const UserLogin = () => {
   };
 
   return (
-    <div className="min-h-screen flex bg-suraksh-ice">
-      {/* Left side - branding */}
-      <div className="hidden lg:flex lg:w-1/2 bg-suraksh-navy items-center justify-center relative overflow-hidden">
-        <div className="absolute inset-0 opacity-10">
-          <svg viewBox="0 0 500 500" className="w-full h-full">
-            <polygon points="250,30 30,470 470,470" fill="none" stroke="hsl(175,70%,40%)" strokeWidth="1" />
-            <polygon points="250,80 80,420 420,420" fill="none" stroke="hsl(210,100%,50%)" strokeWidth="0.5" />
-          </svg>
+    <div className="min-h-screen relative overflow-hidden bg-black flex">
+      {/* ── Left triangle panel — EtherealShadow emerald ── */}
+      <div
+        className="absolute inset-y-0 left-0 w-full lg:w-[58%] z-0"
+        style={{ clipPath: "polygon(0 0, 100% 0, 72% 100%, 0 100%)" }}
+      >
+        <EtherealShadow
+          color="rgba(16,185,129,0.9)"
+          animation={{ scale: 80, speed: 75 }}
+          noise={{ opacity: 0.6, scale: 1.2 }}
+          sizing="fill"
+          style={{ width: "100%", height: "100%", background: "#061a10" }}
+        />
+        <div className="absolute inset-0 flex flex-col items-start justify-end p-12 pb-16 bg-gradient-to-t from-black/60 via-transparent to-transparent">
+          <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.3 }}>
+            <div className="flex items-center gap-3 mb-4">
+              <svg viewBox="0 0 40 40" className="w-9 h-9">
+                <polygon points="20,4 6,34 34,34" fill="none" stroke="#10b981" strokeWidth="2" />
+                <polygon points="20,12 12,30 28,30" fill="#059669" opacity="0.8" />
+              </svg>
+              <span className="text-emerald-400 font-mono font-bold tracking-widest text-sm uppercase">Suraksh</span>
+            </div>
+            <h1 className="text-3xl font-bold text-white leading-tight mb-2">
+              Secure Identity.<br />Digital Agreements.
+            </h1>
+            <p className="text-emerald-300/70 text-sm max-w-xs">
+              India's trusted platform for legally binding e-agreements and Aadhaar-verified identity.
+            </p>
+          </motion.div>
         </div>
-        <motion.div
-          className="relative z-10 text-center px-12"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-        >
-          <TriangleLogo className="w-16 h-16 mx-auto mb-6" />
-          <h1 className="text-3xl font-display font-bold text-primary-foreground mb-3">Suraksh</h1>
-          <p className="text-suraksh-slate text-sm">Secure Digital Documentation & Identity Verification</p>
-        </motion.div>
       </div>
 
-      {/* Right side - form */}
-      <div className="flex-1 flex items-center justify-center p-8">
-        <motion.div
-          className="w-full max-w-md"
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.5 }}
-        >
-          <div className="mb-8">
-            <div className="flex items-center gap-2 mb-2 lg:hidden">
-              <TriangleLogo className="w-6 h-6" />
-              <span className="font-display font-semibold text-foreground">SURAKSH</span>
-            </div>
-            <h2 className="text-2xl font-display font-bold text-foreground">Welcome back</h2>
-            <p className="text-muted-foreground text-sm mt-1">Sign in to your account</p>
-          </div>
-
-          <form onSubmit={handleLogin} className="space-y-5">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="you@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="pl-10"
-                />
+      {/* ── Right panel — Login form ── */}
+      <div className="relative z-10 ml-auto w-full lg:w-[55%] min-h-screen flex items-center justify-end pr-8 lg:pr-16">
+        <motion.div className="w-full max-w-md" initial={{ opacity: 0, x: 40 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.6 }}>
+          <div className="bg-black/70 backdrop-blur-xl rounded-2xl border border-emerald-900/30 p-8 shadow-2xl">
+            <div className="mb-8">
+              <div className="flex items-center gap-2 mb-2 lg:hidden">
+                <svg viewBox="0 0 40 40" className="w-6 h-6">
+                  <polygon points="20,4 6,34 34,34" fill="none" stroke="#10b981" strokeWidth="2" />
+                  <polygon points="20,12 12,30 28,30" fill="#059669" opacity="0.8" />
+                </svg>
+                <span className="text-emerald-400 font-mono font-bold text-sm">SURAKSH</span>
               </div>
+              <h2 className="text-2xl font-bold text-white">Welcome back</h2>
+              <p className="text-gray-400 text-sm mt-1">Sign in to your account</p>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10"
-                />
+            <form onSubmit={handleLogin} className="space-y-5">
+              <div className="space-y-2">
+                <Label htmlFor="email" className="text-gray-300">Email</Label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                  <Input id="email" type="email" placeholder="you@example.com" value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="pl-10 bg-white/5 border-white/10 text-white placeholder:text-gray-600 focus:border-emerald-500/60" />
+                </div>
               </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="password" className="text-gray-300">Password</Label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                  <Input id="password" type="password" placeholder="••••••••" value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="pl-10 bg-white/5 border-white/10 text-white placeholder:text-gray-600 focus:border-emerald-500/60" />
+                </div>
+              </div>
+
+              {error && <p className="text-sm text-red-400 text-center bg-red-500/10 rounded-lg py-2 px-3">{error}</p>}
+              <Button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-500 text-white border-0" disabled={loading}>
+                {loading ? "Signing in..." : "Login"}
+              </Button>
+            </form>
+
+            <div className="mt-6 space-y-3 text-center text-sm">
+              <p className="text-gray-500">
+                Don&apos;t have an account?{" "}
+                <Link to="/user/register" className="text-emerald-400 font-medium hover:underline">Register</Link>
+              </p>
+              <button onClick={() => navigate("/")} className="text-xs text-gray-600 hover:text-gray-400 transition-colors">
+                ← Back to home
+              </button>
             </div>
-
-            {error && <p className="text-sm text-destructive text-center">{error}</p>}
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Signing in..." : "Login"}
-            </Button>
-          </form>
-
-          <div className="mt-6 text-center text-sm text-muted-foreground">
-            Don't have an account?{" "}
-            <Link to="/user/register" className="text-primary font-medium hover:underline">
-              Register
-            </Link>
-          </div>
-
-          <div className="mt-4 text-center">
-            <button
-              onClick={() => navigate("/")}
-              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-            >
-              ← Back to home
-            </button>
           </div>
         </motion.div>
       </div>
     </div>
   );
 };
-
-const TriangleLogo = ({ className = "w-6 h-6" }: { className?: string }) => (
-  <svg viewBox="0 0 40 40" className={className}>
-    <polygon points="20,4 6,34 34,34" fill="none" stroke="hsl(210,100%,50%)" strokeWidth="2" />
-    <polygon points="20,12 12,30 28,30" fill="hsl(175,70%,40%)" opacity="0.6" />
-  </svg>
-);
 
 export default UserLogin;

@@ -6,7 +6,7 @@ import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { AnimatePresence } from "framer-motion";
 import { useState, useEffect } from "react";
 
-import TriangleNav from "@/components/TriangleNav";
+import Index from "@/pages/Index";
 import LoadingScreen from "@/components/LoadingScreen";
 import LandingPage from "@/pages/LandingPage";
 import UserLogin from "@/pages/UserLogin";
@@ -25,6 +25,9 @@ import CreateAgreement from "@/pages/CreateAgreement";
 import VerificationManagement from "@/pages/VerificationManagement";
 import ProfilePage from "@/pages/ProfilePage";
 import AdminAgreements from "@/pages/AdminAgreements";
+import LawyerDashboard from "@/pages/LawyerDashboard";
+import UserVerificationStatus from "@/pages/UserVerificationStatus";
+import UserVerificationDetails from "@/pages/UserVerificationDetails";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -59,8 +62,8 @@ const App = () => (
       <BrowserRouter>
         <RouteLoader>
           <Routes>
-            <Route path="/" element={<TriangleNav />} />
-            <Route path="/landing" element={<LandingPage />} />
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/hero" element={<Index />} />
             <Route path="/user/login" element={<UserLogin />} />
             <Route path="/user/register" element={<UserRegister />} />
             <Route path="/user/otp" element={<OTPVerification />} />
@@ -71,6 +74,8 @@ const App = () => (
             <Route path="/user/pending" element={<DocumentReview />} />
             <Route path="/user/verification" element={<IdentityVerification />} />
             <Route path="/user/profile" element={<ProfilePage />} />
+            <Route path="/user/verification-status" element={<UserVerificationStatus />} />
+            <Route path="/user/verification-details" element={<UserVerificationDetails />} />
             <Route path="/admin/login" element={<AdminLogin />} />
             <Route path="/admin/register" element={<AdminRegister />} />
             <Route path="/admin/dashboard" element={<AdminDashboard />} />
@@ -79,6 +84,7 @@ const App = () => (
             <Route path="/admin/users" element={<AdminDashboard />} />
             <Route path="/admin/create-agreement" element={<CreateAgreement />} />
             <Route path="/admin/verifications" element={<VerificationManagement />} />
+            <Route path="/lawyer/dashboard" element={<LawyerDashboard />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </RouteLoader>

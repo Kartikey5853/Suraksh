@@ -1,5 +1,5 @@
-import { Navigate } from "react-router-dom";
+import { HorizonHeroSection } from "@/components/ui/horizon-hero-section";
 
-const Index = () => <Navigate to="/" replace />;
+const Index = () => <HorizonHeroSection />;
 
 export default Index;
