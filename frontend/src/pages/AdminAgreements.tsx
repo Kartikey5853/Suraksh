@@ -62,6 +62,9 @@ const AdminAgreements = () => {
   const [timelineLoading, setTimelineLoading] = useState(false);
   const [statusFilter, setStatusFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("All Types");
+  const [vcOnly, setVcOnly] = useState(false);
+  const [sortBy, setSortBy] = useState<"date" | "valuation">("date");
+  const [keywordSearch, setKeywordSearch] = useState("");
 
   const load = async () => {
     setLoading(true);
@@ -90,11 +93,33 @@ const AdminAgreements = () => {
   const handleHold = async (agId: string) => { await agreementApi.hold(agId, "Paused by admin"); load(); };
   const handleResume = async (agId: string) => { await agreementApi.resume(agId); load(); };
 
-  const filtered = agreements.filter((a) => {
+  const VC_TYPES = new Set(["Term Sheet", "Investment Agreement", "SAFE Agreement", "SHA", "SHA (Shareholder Agreement)", "SSA", "SSA (Share Subscription Agreement)", "Board Consent", "Cap Table Update", "Board Resolution"]);
+
+  const extractValuation = (ag: any): number => {
+    const ft = ag.key_points?.financial_terms ?? {};
+    const raw = ft.valuation ?? ft.investment_amount ?? ft.deal_size ?? "";
+    const num = parseFloat(String(raw).replace(/[^0-9.]/g, ""));
+    return isNaN(num) ? 0 : num;
+  };
+
+  let filtered = agreements.filter((a) => {
     const statusOk = statusFilter === "all" || a.status === statusFilter;
     const typeOk = typeFilter === "All Types" || a.doc_type === typeFilter;
-    return statusOk && typeOk;
+    const vcOk = !vcOnly || VC_TYPES.has(a.doc_type);
+    const kwLower = keywordSearch.toLowerCase().trim();
+    const kwOk = !kwLower || (
+      a.title?.toLowerCase().includes(kwLower) ||
+      (a.keywords ?? []).some((k: string) => k.includes(kwLower)) ||
+      a.doc_type?.toLowerCase().includes(kwLower) ||
+      a.content?.toLowerCase().includes(kwLower)
+    );
+    return statusOk && typeOk && vcOk && kwOk;
   });
+  if (sortBy === "valuation") {
+    filtered = [...filtered].sort((a, b) => extractValuation(b) - extractValuation(a));
+  } else {
+    filtered = [...filtered].sort((a, b) => new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime());
+  }
 
   return (
     <AdminLayout>
@@ -107,8 +132,7 @@ const AdminAgreements = () => {
           <Button variant="outline" size="sm" onClick={load} className="text-xs">Refresh</Button>
         </div>
 
-        {/* Filters */}
-        <div className="flex flex-wrap gap-2 mb-5 items-center">
+        {/* Filters */}\n        <div className="flex flex-wrap gap-2 mb-5 items-center">
           <Filter className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
           <div className="flex flex-wrap gap-1.5">
             {ALL_STATUSES.map((f) => (
@@ -118,10 +142,37 @@ const AdminAgreements = () => {
               </button>
             ))}
           </div>
+          <button
+            onClick={() => setVcOnly(v => !v)}
+            className={`ml-1 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors flex items-center gap-1 border ${
+              vcOnly ? "bg-amber-500/20 text-amber-600 border-amber-500/40" : "bg-muted text-muted-foreground border-transparent hover:text-foreground"
+            }`}
+          >
+            <svg viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3"><path d="M8.433 7.418c.155-.103.346-.196.567-.267v1.698a2.305 2.305 0 01-.567-.267C8.07 8.34 8 8.114 8 8c0-.114.07-.34.433-.582zM11 12.849v-1.698c.22.071.412.164.567.267.364.243.433.468.433.582 0 .114-.07.34-.433.582a2.305 2.305 0 01-.567.267z"/><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-13a1 1 0 10-2 0v.092a4.535 4.535 0 00-1.676.662C6.602 6.234 6 7.009 6 8c0 .99.602 1.765 1.324 2.246.48.32 1.054.545 1.676.662v1.941c-.391-.127-.68-.317-.843-.504a1 1 0 10-1.51 1.31c.562.649 1.413 1.076 2.353 1.253V15a1 1 0 102 0v-.092a4.535 4.535 0 001.676-.662C13.398 13.766 14 12.991 14 12c0-.99-.602-1.765-1.324-2.246A4.535 4.535 0 0011 9.092V7.151c.391.127.68.317.843.504a1 1 0 101.511-1.31c-.563-.649-1.413-1.076-2.354-1.253V5z" clipRule="evenodd"/></svg>
+            Venture Capital
+          </button>
           <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}
-            className="ml-auto rounded-md border border-input bg-background px-2 py-1 text-xs text-foreground">
+            className="rounded-md border border-input bg-background px-2 py-1 text-xs text-foreground">
             {DOC_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
           </select>
+          <select value={sortBy} onChange={(e) => setSortBy(e.target.value as "date" | "valuation")}
+            className="rounded-md border border-input bg-background px-2 py-1 text-xs text-foreground">
+            <option value="date">Sort: Date</option>
+            <option value="valuation">Sort: Valuation</option>
+          </select>
+          <div className="w-full mt-2 flex items-center gap-2">
+            <svg viewBox="0 0 20 20" fill="none" className="w-3.5 h-3.5 text-muted-foreground shrink-0"><path d="M9 3a6 6 0 100 12A6 6 0 009 3zM1 9a8 8 0 1116 0A8 8 0 011 9z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/><path d="M14.5 14.5L19 19" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+            <input
+              type="text"
+              value={keywordSearch}
+              onChange={(e) => setKeywordSearch(e.target.value)}
+              placeholder="Search by keyword, title, content…"
+              className="flex-1 bg-background border border-input rounded-md px-3 py-1.5 text-xs text-foreground placeholder:text-muted-foreground/50 outline-none focus:ring-1 focus:ring-primary/50"
+            />
+            {keywordSearch && (
+              <button onClick={() => setKeywordSearch("")} className="text-muted-foreground hover:text-foreground text-xs">✕</button>
+            )}
+          </div>
         </div>
 
         <div className="rounded-xl border border-border bg-card overflow-hidden">
@@ -151,7 +202,16 @@ const AdminAgreements = () => {
                 <tbody className="divide-y divide-border">
                   {filtered.map((ag) => (
                     <tr key={ag.id} className="hover:bg-muted/20 transition-colors cursor-pointer" onClick={() => openTimeline(ag.id)}>
-                      <td className="px-4 py-3 font-medium text-foreground max-w-[180px] truncate">{ag.title}</td>
+                      <td className="px-4 py-3 max-w-[220px]">
+                        <div className="font-medium text-foreground truncate">{ag.title}</div>
+                        {ag.keywords?.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {ag.keywords.slice(0, 3).map((k: string, i: number) => (
+                              <span key={i} className="px-1.5 py-0.5 rounded text-[9px] bg-primary/10 text-primary/80">{k}</span>
+                            ))}
+                          </div>
+                        )}
+                      </td>
                       <td className="px-4 py-3 text-muted-foreground text-xs">{ag.doc_type}</td>
                       <td className="px-4 py-3 text-xs text-muted-foreground">
                         <div>{ag.sent_to_name ?? (ag.sent_to ? ag.sent_to.slice(0, 8) + "…" : <span className="italic">—</span>)}</div>
@@ -318,6 +378,23 @@ const AdminAgreements = () => {
                               <span key={i} className="px-2 py-0.5 rounded-full bg-green-500/10 text-green-600 text-xs">{t}</span>
                             ))}
                           </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Keywords + Hash */}
+                    {timelineModal.ag.keywords?.length > 0 && (
+                      <div>
+                        <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-2">Extracted Keywords</h4>
+                        <div className="flex flex-wrap gap-1.5">
+                          {timelineModal.ag.keywords.map((k: string, i: number) => (
+                            <span key={i} className="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs">{k}</span>
+                          ))}
+                        </div>
+                        {timelineModal.ag.content_hash && (
+                          <p className="text-[9px] text-muted-foreground mt-2 font-mono break-all opacity-40" title="SHA-256 content hash">
+                            SHA-256: {timelineModal.ag.content_hash}
+                          </p>
                         )}
                       </div>
                     )}

@@ -36,6 +36,9 @@ class Settings(BaseSettings):
     # ── Gemini AI ──────────────────────────────────────────────────────────────
     GEMINI_API_KEY: str = ""
 
+    # ── Resend (email delivery) ────────────────────────────────────────────────
+    RESEND_API_KEY: str = ""
+
     # ── Role registration codes ────────────────────────────────────────────────
     # Format: role -> invite code (change before production)
     ROLE_CODES: dict = {

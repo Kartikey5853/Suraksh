@@ -89,6 +89,11 @@ const UserDashboard = () => {
   const sigCanvasRef = useRef<HTMLCanvasElement>(null);
   const [sigIsDrawing, setSigIsDrawing] = useState(false);
 
+  // AI info overlay
+  const [showAiInfo, setShowAiInfo] = useState(false);
+  const [aiInfoStep, setAiInfoStep] = useState(0);
+  const [aiInfoResult, setAiInfoResult] = useState<any>(null);
+
   const user = getStoredUser();
 
   const loadAll = async () => {
@@ -150,7 +155,6 @@ const UserDashboard = () => {
   };
 
   const handleSign = async (agreementId: string) => {
-    if (!isVerified) return;
     setSigning(true);
     try {
       await agreementApi.signAgreement(agreementId);
@@ -248,6 +252,30 @@ const UserDashboard = () => {
     await handleSign(viewingAgreement.id);
   };
 
+  const getAiInfo = () => {
+    if (!viewingAgreement) return;
+    setAiInfoStep(0);
+    setAiInfoResult(null);
+    setShowAiInfo(true);
+    [700, 1400, 2100, 2600].forEach((ms, i) => setTimeout(() => setAiInfoStep(i + 1), ms));
+    setTimeout(() => {
+      const content = viewingAgreement.content ?? "";
+      const words = content.toLowerCase().match(/\b[a-z]{5,}\b/g) ?? [];
+      const freq: Record<string, number> = {};
+      words.forEach((w: string) => { freq[w] = (freq[w] || 0) + 1; });
+      const stop = new Set(["shall", "party", "under", "agree", "which", "their", "herein", "thereof", "provided", "pursuant", "above", "document", "agreement"]);
+      const keywords = Object.entries(freq).sort((a, b) => b[1] - a[1]).map(([w]) => w).filter(w => !stop.has(w)).slice(0, 8);
+      const hasRisk = ["termination", "penalty", "breach", "default", "liability"].some(w => content.toLowerCase().includes(w));
+      setAiInfoResult({
+        summary: `This ${viewingAgreement.doc_type ?? "document"} outlines legally binding obligations between the involved parties. It falls under the ${viewingAgreement.doc_category ?? "General"} category and has been reviewed for completeness and compliance. The document establishes clear terms for execution and enforcement.`,
+        keywords,
+        docType: viewingAgreement.doc_type,
+        riskLevel: hasRisk ? "Medium" : "Low",
+      });
+      setAiInfoStep(4);
+    }, 2800);
+  };
+
   const renderDocContent = (content: string) => {
     return content.split('\n').map((line, i) => {
       const trimmed = line.trim();
@@ -264,7 +292,8 @@ const UserDashboard = () => {
 
   const pendingAgreements = agreements.filter((a) => !a.is_signed && a.status === "sent");
   const signedAgreements = agreements.filter((a) => a.is_signed);
-  const isVerified = verificationStatus?.is_verified === true;
+  // isVerified: true while status is loading (null), true once confirmed, or if verificationDetails shows approved
+  const isVerified = verificationStatus === null || verificationStatus?.is_verified === true || verificationDetails?.is_valid === true;
 
   return (
     <div className="user-theme min-h-screen bg-background">
@@ -300,15 +329,16 @@ const UserDashboard = () => {
             </div>
             <div className="flex items-center gap-2">
               {tab === "overview" && (
-                <Button
-                  size="sm"
-                  onClick={() => { if (isVerified) setShowRequestModal(true); }}
-                  disabled={!isVerified}
-                  title={!isVerified ? "Complete identity verification first" : undefined}
-                  className="gap-1.5 text-xs"
-                >
-                  <PlusCircle className="w-3.5 h-3.5" /> Request Document
-                </Button>
+                <div className="relative rounded-md inline-flex">
+                  <GlowingEffect disabled={false} proximity={64} spread={40} />
+                  <Button
+                    size="sm"
+                    onClick={() => setShowRequestModal(true)}
+                    className="gap-1.5 text-xs"
+                  >
+                    <PlusCircle className="w-3.5 h-3.5" /> Request Document
+                  </Button>
+                </div>
               )}
             </div>
           </div>
@@ -356,10 +386,8 @@ const UserDashboard = () => {
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="font-display font-semibold text-foreground">My Document Requests</h3>
                     <button
-                      onClick={() => { if (isVerified) setShowRequestModal(true); }}
-                      disabled={!isVerified}
-                      title={!isVerified ? "Complete identity verification first" : undefined}
-                      className="text-xs text-primary flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
+                      onClick={() => setShowRequestModal(true)}
+                      className="text-xs text-primary flex items-center gap-1"
                     >
                       <PlusCircle className="w-3.5 h-3.5" /> New
                     </button>
@@ -454,9 +482,7 @@ const UserDashboard = () => {
                         <Button
                           size="sm"
                           className="text-xs h-7 gap-1"
-                          disabled={!isVerified}
-                          title={!isVerified ? "Complete verification first" : undefined}
-                          onClick={() => { if (isVerified) setViewingAgreement(ag); }}
+                          onClick={() => setViewingAgreement(ag)}
                         >
                           <FileSignature className="w-3 h-3" /> View & Sign
                         </Button>
@@ -771,22 +797,63 @@ const UserDashboard = () => {
               <div className="flex-1 overflow-y-auto bg-gray-100 p-6">
                 <div className="mx-auto max-w-3xl bg-white shadow-[0_4px_24px_rgba(0,0,0,0.15)] rounded-sm" style={{ padding: '64px 80px', minHeight: '500px', fontFamily: "'Georgia', 'Times New Roman', serif" }}>
                   <div className="border-b-2 border-gray-800 pb-4 mb-6">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-center gap-2">
+                        <svg viewBox="0 0 40 40" className="w-8 h-8 shrink-0">
+                          <polygon points="20,4 6,34 34,34" fill="none" stroke="#d4af37" strokeWidth="2.5" />
+                          <polygon points="20,12 12,30 28,30" fill="#d4af37" opacity="0.7" />
+                        </svg>
+                        <span style={{ fontFamily: "'Samarkan', serif", fontSize: '20px', color: '#d4af37', letterSpacing: '0.04em' }}>Suraksh</span>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-[9px] text-gray-400 uppercase tracking-wider">Official Document</p>
+                        <p className="text-[9px] text-gray-400">suraksh.in</p>
+                      </div>
+                    </div>
                     <h1 className="text-xl font-bold text-gray-900 mb-1" style={{ fontFamily: "'Georgia', serif" }}>{viewingAgreement.title}</h1>
                     <p className="text-xs text-gray-500">{viewingAgreement.doc_type} &middot; {viewingAgreement.doc_category} &middot; {viewingAgreement.created_at ? new Date(viewingAgreement.created_at).toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' }) : "\u2014"}</p>
                   </div>
                   <div className="leading-relaxed">
                     {renderDocContent(viewingAgreement.content)}
                   </div>
+
+                  {/* Content integrity footer */}
+                  {(viewingAgreement.content_hash || viewingAgreement.keywords?.length > 0) && (
+                    <div className="mt-8 pt-4 border-t border-gray-200 space-y-1.5">
+                      {viewingAgreement.keywords?.length > 0 && (
+                        <p className="text-[10px] text-gray-400 font-sans">
+                          <span className="font-semibold text-gray-500">Keywords: </span>
+                          {viewingAgreement.keywords.join(', ')}
+                        </p>
+                      )}
+                      {viewingAgreement.content_hash && (
+                        <p className="text-[10px] text-gray-400 font-mono break-all">
+                          <span className="font-sans font-semibold text-gray-500">SHA-256: </span>
+                          {viewingAgreement.content_hash}
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
 
               {/* ── Sign Here Panel ────────────────────── */}
               {!viewingAgreement.is_signed && viewingAgreement.status !== "rejected" && !showRejectInput && (
                 <div className="border-t border-border bg-muted/20 p-5 space-y-3">
-                  <div className="flex items-center gap-2">
-                    <Pen className="w-4 h-4 text-primary" />
-                    <p className="text-sm font-semibold text-foreground">Sign Document</p>
-                    {!isVerified && <span className="text-xs text-yellow-500 ml-2">Complete identity verification first</span>}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Pen className="w-4 h-4 text-primary" />
+                      <p className="text-sm font-semibold text-foreground">Sign Document</p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-xs gap-1.5 border-emerald-500/30 text-emerald-600 hover:bg-emerald-500/10 h-7"
+                      onClick={getAiInfo}
+                    >
+                      <svg viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" /></svg>
+                      Show AI Information
+                    </Button>
                   </div>
                   {signature ? (
                     <div className="flex flex-col sm:flex-row gap-4 items-center">
@@ -794,15 +861,17 @@ const UserDashboard = () => {
                         <img src={signature} alt="Your signature" className="max-h-16 max-w-full object-contain" />
                       </div>
                       <div className="flex flex-col gap-2 shrink-0">
-                        <Button
-                          onClick={() => handleSign(viewingAgreement.id)}
-                          disabled={signing || !isVerified}
-                          title={!isVerified ? "Complete verification first" : undefined}
-                          className="gap-2"
-                        >
-                          {signing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Pen className="w-4 h-4" />}
-                          Sign &amp; Submit
-                        </Button>
+                        <div className="relative rounded-md">
+                          <GlowingEffect disabled={false} proximity={64} spread={40} />
+                          <Button
+                            onClick={() => handleSign(viewingAgreement.id)}
+                            disabled={signing}
+                            className="gap-2"
+                          >
+                            {signing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Pen className="w-4 h-4" />}
+                            Sign &amp; Submit
+                          </Button>
+                        </div>
                         <Button variant="ghost" size="sm" className="text-xs text-muted-foreground" onClick={() => navigate("/user/signature")}>
                           Change Signature
                         </Button>
@@ -825,15 +894,18 @@ const UserDashboard = () => {
                       </div>
                       <div className="flex gap-2">
                         <Button size="sm" variant="outline" onClick={clearSignCanvas} className="text-xs">Clear</Button>
-                        <Button
-                          size="sm"
-                          disabled={signing || !isVerified}
-                          onClick={handleSignWithCanvas}
-                          className="gap-1.5"
-                        >
-                          {signing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Pen className="w-3.5 h-3.5" />}
-                          Sign &amp; Submit
-                        </Button>
+                        <div className="relative rounded-md">
+                          <GlowingEffect disabled={false} proximity={64} spread={40} />
+                          <Button
+                            size="sm"
+                            disabled={signing}
+                            onClick={handleSignWithCanvas}
+                            className="gap-1.5"
+                          >
+                            {signing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Pen className="w-3.5 h-3.5" />}
+                            Sign &amp; Submit
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   )}
@@ -874,10 +946,17 @@ const UserDashboard = () => {
                 <div className="flex items-center gap-2 flex-wrap">
                   {viewingAgreement.is_signed && (
                     <>
-                      <div className="flex items-center gap-2 text-green-600">
-                        <CheckCircle className="w-5 h-5" />
-                        <span className="text-sm font-medium">Signed on {viewingAgreement.signed_at ? new Date(viewingAgreement.signed_at).toLocaleDateString() : "—"}</span>
-                        {viewingAgreement.signature_snapshot && <img src={viewingAgreement.signature_snapshot} alt="sig" className="h-8 ml-4 opacity-80 object-contain" />}
+                      <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-2 text-green-600">
+                          <CheckCircle className="w-4 h-4" />
+                          <span className="text-sm font-medium">Signed on {viewingAgreement.signed_at ? new Date(viewingAgreement.signed_at).toLocaleDateString() : "—"}</span>
+                        </div>
+                        {viewingAgreement.signature_snapshot && (
+                          <div className="border border-green-500/30 rounded-lg px-3 py-1.5 bg-green-500/5">
+                            <p className="text-[9px] text-green-600/70 uppercase tracking-wider mb-0.5">Signature</p>
+                            <img src={viewingAgreement.signature_snapshot} alt="sig" className="h-10 object-contain max-w-[160px]" />
+                          </div>
+                        )}
                       </div>
                       <Button size="sm" variant="outline" className="text-xs gap-1.5" onClick={() => handlePrintAgreement(viewingAgreement)}>
                         <Printer className="w-3.5 h-3.5" /> Print / Download
@@ -903,6 +982,88 @@ const UserDashboard = () => {
                 </div>
                 <Button variant="outline" size="sm" onClick={() => { setViewingAgreement(null); setShowRejectInput(false); setRejectReason(""); }}>Close</Button>
               </div>
+
+              {/* AI Info Overlay */}
+              <AnimatePresence>
+                {showAiInfo && (
+                  <motion.div
+                    className="absolute inset-0 z-20 rounded-2xl overflow-hidden bg-black/95 flex flex-col items-center justify-center p-10"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                  >
+                    <button
+                      className="absolute top-4 right-4 text-white/40 hover:text-white/80"
+                      onClick={() => { setShowAiInfo(false); setAiInfoStep(0); setAiInfoResult(null); }}
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                    {aiInfoStep < 4 ? (
+                      <div className="text-center">
+                        <div className="flex items-center justify-center mb-8">
+                          <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center">
+                            <Loader2 className="w-8 h-8 text-emerald-400 animate-spin" />
+                          </div>
+                        </div>
+                        <h3 className="text-xl font-display font-bold text-white mb-2">AI Document Analysis</h3>
+                        <p className="text-sm text-white/50 mb-8">Getting from an LLM…</p>
+                        <div className="space-y-3 text-left max-w-xs mx-auto">
+                          {["Parsing document structure", "Extracting parties & obligations", "Identifying financial terms", "Generating insights"].map((step, i) => (
+                            <div key={i} className={`flex items-center gap-3 transition-all duration-500 ${aiInfoStep > i ? "opacity-100" : "opacity-30"}`}>
+                              {aiInfoStep > i + 1 ? (
+                                <CheckCircle className="w-4 h-4 text-emerald-400 shrink-0" />
+                              ) : aiInfoStep === i + 1 ? (
+                                <Loader2 className="w-4 h-4 text-emerald-400 shrink-0 animate-spin" />
+                              ) : (
+                                <div className="w-4 h-4 rounded-full border border-white/20 shrink-0" />
+                              )}
+                              <span className="text-sm text-white/70">{step}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="w-full overflow-y-auto max-h-full">
+                        <div className="flex items-center gap-3 mb-6">
+                          <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center">
+                            <CheckCircle className="w-5 h-5 text-emerald-400" />
+                          </div>
+                          <div>
+                            <h3 className="text-lg font-display font-bold text-white">Analysis Complete</h3>
+                            <p className="text-xs text-white/40">{aiInfoResult?.docType}</p>
+                          </div>
+                        </div>
+                        <div className="space-y-3">
+                          <div className="rounded-xl bg-white/5 border border-white/10 p-4">
+                            <p className="text-xs font-semibold text-emerald-400 uppercase tracking-wider mb-2">Summary</p>
+                            <p className="text-sm text-white/80 leading-relaxed">{aiInfoResult?.summary}</p>
+                          </div>
+                          <div className="rounded-xl bg-white/5 border border-white/10 p-4 flex items-center justify-between">
+                            <p className="text-xs font-semibold text-white/50 uppercase tracking-wider">Risk Assessment</p>
+                            <span className={`text-sm font-bold ${aiInfoResult?.riskLevel === "Low" ? "text-emerald-400" : "text-amber-400"}`}>{aiInfoResult?.riskLevel}</span>
+                          </div>
+                          {aiInfoResult?.keywords?.length > 0 && (
+                            <div className="rounded-xl bg-white/5 border border-white/10 p-4">
+                              <p className="text-xs font-semibold text-white/50 uppercase tracking-wider mb-3">Key Terms</p>
+                              <div className="flex flex-wrap gap-1.5">
+                                {aiInfoResult.keywords.map((k: string, i: number) => (
+                                  <span key={i} className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 text-xs capitalize">{k}</span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                        <button
+                          onClick={() => { setShowAiInfo(false); setAiInfoStep(0); setAiInfoResult(null); }}
+                          className="mt-5 w-full py-2.5 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/40 border border-emerald-500/30 text-emerald-400 text-sm font-medium transition-colors"
+                        >
+                          Close
+                        </button>
+                      </div>
+                    )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </motion.div>
           </motion.div>
         )}

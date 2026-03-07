@@ -22,11 +22,7 @@ const UserLogin = () => {
     try {
       const { data } = await authApi.login({ email, password });
       saveSession(data);
-      if (!data.is_onboarded) {
-        navigate("/user/otp");
-      } else {
-        navigate("/user/dashboard");
-      }
+      navigate("/user/otp");
     } catch (err: any) {
       setError(err.response?.data?.detail ?? "Login failed. Please try again.");
     } finally {
@@ -51,11 +47,7 @@ const UserLogin = () => {
         <div className="absolute inset-0 flex flex-col items-start justify-end p-12 pb-16 bg-gradient-to-t from-black/60 via-transparent to-transparent">
           <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.3 }}>
             <div className="flex items-center gap-3 mb-4">
-              <svg viewBox="0 0 40 40" className="w-9 h-9">
-                <polygon points="20,4 6,34 34,34" fill="none" stroke="#10b981" strokeWidth="2" />
-                <polygon points="20,12 12,30 28,30" fill="#059669" opacity="0.8" />
-              </svg>
-              <span className="text-emerald-400 font-mono font-bold tracking-widest text-sm uppercase">Suraksh</span>
+              <span style={{ fontFamily: "'Samarkan', serif", fontSize: '22px', color: '#10b981', letterSpacing: '0.05em' }}>Suraksh</span>
             </div>
             <h1 className="text-3xl font-bold text-white leading-tight mb-2">
               Secure Identity.<br />Digital Agreements.
@@ -73,11 +65,7 @@ const UserLogin = () => {
           <div className="bg-black/70 backdrop-blur-xl rounded-2xl border border-emerald-900/30 p-8 shadow-2xl">
             <div className="mb-8">
               <div className="flex items-center gap-2 mb-2 lg:hidden">
-                <svg viewBox="0 0 40 40" className="w-6 h-6">
-                  <polygon points="20,4 6,34 34,34" fill="none" stroke="#10b981" strokeWidth="2" />
-                  <polygon points="20,12 12,30 28,30" fill="#059669" opacity="0.8" />
-                </svg>
-                <span className="text-emerald-400 font-mono font-bold text-sm">SURAKSH</span>
+                <span style={{ fontFamily: "'Samarkan', serif", fontSize: '18px', color: '#10b981', letterSpacing: '0.05em' }}>Suraksh</span>
               </div>
               <h2 className="text-2xl font-bold text-white">Welcome back</h2>
               <p className="text-gray-400 text-sm mt-1">Sign in to your account</p>

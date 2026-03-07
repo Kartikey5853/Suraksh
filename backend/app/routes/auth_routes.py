@@ -49,8 +49,8 @@ def reset_pass(payload: ResetPasswordRequest, db: Session = Depends(get_db)):
 @router.post("/send-otp")
 def send_otp(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     from app.services.otp_service import generate_otp
-    generate_otp(current_user.id, db)
-    return {"message": "OTP sent — check the server terminal"}
+    generate_otp(current_user.id, db, email=current_user.email)
+    return {"message": "OTP sent to your registered email"}
 
 
 @router.post("/verify-otp")

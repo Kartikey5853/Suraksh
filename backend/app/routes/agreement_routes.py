@@ -2,7 +2,9 @@
 Agreement routes — full pipeline: draft → lawyer review → send to user → signed/rejected.
 Includes AI generation via Gemini and per-agreement timeline.
 """
+import hashlib
 import json
+import re
 from datetime import datetime
 from typing import Optional
 
@@ -93,6 +95,17 @@ def _serialize(ag: Agreement, db=None):
     except Exception:
         key_points_parsed = None
 
+    # Compute content hash and extract keywords on-the-fly
+    content_hash = hashlib.sha256(ag.content.encode()).hexdigest() if ag.content else None
+    _stop = {"shall", "party", "under", "agree", "which", "their", "herein", "thereof", "provided",
+             "pursuant", "above", "document", "agreement", "agreements", "parties", "company",
+             "terms", "where", "after", "before", "other", "these", "those"}
+    _words = re.findall(r'\b[a-z]{5,}\b', ag.content.lower()) if ag.content else []
+    _freq: dict = {}
+    for w in _words:
+        _freq[w] = _freq.get(w, 0) + 1
+    keywords = [w for w, _ in sorted(_freq.items(), key=lambda x: -x[1]) if w not in _stop][:10]
+
     return {
         "id": ag.id,
         "title": ag.title,
@@ -120,6 +133,8 @@ def _serialize(ag: Agreement, db=None):
         "signature_snapshot": ag.signature_snapshot,
         "created_at": ag.created_at.isoformat() if ag.created_at else None,
         "updated_at": ag.updated_at.isoformat() if ag.updated_at else None,
+        "content_hash": content_hash,
+        "keywords": keywords,
     }
 
 

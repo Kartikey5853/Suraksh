@@ -85,7 +85,7 @@ const OTPVerification = () => {
           </div>
           <h2 className="text-2xl font-display font-bold text-foreground">Verify Your Identity</h2>
           <p className="text-sm text-muted-foreground mt-2">
-            {sent ? "Enter the 6-digit code printed in the server terminal" : "Sending OTP…"}
+            {sent ? "Enter the 6-digit code sent to your registered email" : "Sending OTP to your email…"}
           </p>
         </div>
 

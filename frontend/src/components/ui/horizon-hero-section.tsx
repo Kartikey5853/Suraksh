@@ -113,7 +113,7 @@ export const HorizonHeroSection: React.FC = () => {
   const [scrollProgress, setScrollProgress] = useState(0);
   const [currentSection, setCurrentSection] = useState(0);
   const [isReady, setIsReady] = useState(false);
-  const totalSections = 2;
+  const totalSections = 3;
 
   const threeRefs = useRef<ThreeRefs>({
     scene: null,
@@ -482,10 +482,13 @@ export const HorizonHeroSection: React.FC = () => {
         .hero-container { position: relative; min-height: ${totalSections + 1}00vh; background: #000; }
         .hero-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; }
         .hero-content { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 10; text-align: center; width: 100%; max-width: 900px; padding: 0 24px; pointer-events: none; }
-        .hero-title { font-size: clamp(4rem, 12vw, 10rem); font-weight: 900; letter-spacing: 0.15em; color: #d4af37; text-shadow: 0 0 80px rgba(212,175,55,0.4); line-height: 1; overflow: hidden; font-family: 'Montserrat', sans-serif; cursor: pointer; pointer-events: all; transition: text-shadow 0.3s; }
+        .hero-title { font-size: clamp(4rem, 12vw, 10rem); font-weight: 400; letter-spacing: 0.15em; color: #d4af37; text-shadow: 0 0 80px rgba(212,175,55,0.4); line-height: 1; overflow: hidden; font-family: 'Samarkan', serif; cursor: pointer; pointer-events: all; transition: text-shadow 0.3s; }
         .hero-title:hover { text-shadow: 0 0 120px rgba(212,175,55,0.7); }
         .hero-subtitle { margin-top: 1.5rem; }
         .subtitle-line { font-size: clamp(0.9rem, 2vw, 1.15rem); color: rgba(255,255,255,0.65); letter-spacing: 0.1em; line-height: 1.8; display: block; }
+        .hero-cta { margin-top: 2.5rem; display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; pointer-events: all; }
+        .hero-cta-btn { padding: 12px 32px; border: none; border-radius: 8px; font-size: 0.95rem; font-weight: 700; cursor: pointer; letter-spacing: 0.04em; transition: opacity 0.2s, transform 0.2s; }
+        .hero-cta-btn:hover { opacity: 0.88; transform: translateY(-2px); }
         .scroll-progress { position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%); z-index: 20; display: flex; flex-direction: column; align-items: center; gap: 8px; }
         .scroll-text { font-size: 0.65rem; letter-spacing: 0.25em; color: rgba(255,255,255,0.4); }
         .progress-track { width: 120px; height: 2px; background: rgba(255,255,255,0.1); border-radius: 2px; overflow: hidden; }
@@ -494,16 +497,16 @@ export const HorizonHeroSection: React.FC = () => {
         .scroll-sections { position: relative; z-index: 5; }
         .content-section { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 80px 20px; }
         .features-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 24px; max-width: 1100px; width: 100%; margin-top: 48px; }
-        .feature-card { background: rgba(255,255,255,0.04); border: 1px solid rgba(212,175,55,0.15); border-radius: 16px; padding: 28px; backdrop-filter: blur(10px); }
-        .feature-card h3 { font-size: 0.95rem; font-weight: 700; color: #d4af37; margin-bottom: 12px; letter-spacing: 0.05em; }
-        .feature-card li { font-size: 0.82rem; color: rgba(255,255,255,0.65); padding: 4px 0 4px 20px; position: relative; line-height: 1.5; }
-        .feature-card li::before { content: '✓'; position: absolute; left: 0; color: #10b981; font-weight: bold; }
+        .feature-card { background: #fff; border: 1px solid rgba(212,175,55,0.25); border-radius: 16px; padding: 28px; }
+        .feature-card h3 { font-size: 0.95rem; font-weight: 700; color: #92700a; margin-bottom: 12px; letter-spacing: 0.05em; }
+        .feature-card li { font-size: 0.82rem; color: #222; padding: 4px 0 4px 20px; position: relative; line-height: 1.5; }
+        .feature-card li::before { content: '✓'; position: absolute; left: 0; color: #059669; font-weight: bold; }
         .unique-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 24px; max-width: 1100px; width: 100%; margin-top: 48px; }
-        .unique-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(14,165,233,0.2); border-radius: 16px; padding: 32px 28px; backdrop-filter: blur(10px); transition: border-color 0.3s, transform 0.3s; }
-        .unique-card:hover { border-color: rgba(14,165,233,0.5); transform: translateY(-4px); }
-        .unique-num { font-size: 2.5rem; font-weight: 900; color: rgba(14,165,233,0.2); font-family: 'Montserrat', sans-serif; }
-        .unique-title { font-size: 1rem; font-weight: 700; color: #fff; margin: 8px 0 12px; letter-spacing: 0.03em; }
-        .unique-desc { font-size: 0.82rem; color: rgba(255,255,255,0.55); line-height: 1.7; }
+        .unique-card { background: #fff; border: 1px solid rgba(14,165,233,0.3); border-radius: 16px; padding: 32px 28px; transition: border-color 0.3s, transform 0.3s, box-shadow 0.3s; }
+        .unique-card:hover { border-color: rgba(14,165,233,0.7); transform: translateY(-4px); box-shadow: 0 8px 32px rgba(14,165,233,0.15); }
+        .unique-num { font-size: 2.5rem; font-weight: 900; color: rgba(14,165,233,0.7); font-family: 'Montserrat', sans-serif; }
+        .unique-title { font-size: 1rem; font-weight: 700; color: #111; margin: 8px 0 12px; letter-spacing: 0.03em; }
+        .unique-desc { font-size: 0.82rem; color: #444; line-height: 1.7; }
         .section-heading { font-size: clamp(2rem, 5vw, 3.5rem); font-weight: 900; color: #fff; letter-spacing: 0.1em; text-align: center; font-family: 'Montserrat', sans-serif; }
         .section-heading span { color: #d4af37; }
         .section-sub { font-size: 1rem; color: rgba(255,255,255,0.5); margin-top: 12px; text-align: center; letter-spacing: 0.05em; }
@@ -511,6 +514,34 @@ export const HorizonHeroSection: React.FC = () => {
 
       <div ref={containerRef} className="hero-container">
         <canvas ref={canvasRef} className="hero-canvas" />
+
+        {/* Centered hero title + CTA — fades out when scrolling past first section */}
+        <div 
+          className="hero-content" 
+          id="hero-overlay"
+          style={{ 
+            opacity: currentSection === 0 ? 1 : 0,
+            transition: 'opacity 0.6s ease-out',
+            pointerEvents: currentSection === 0 ? 'auto' : 'none'
+          }}
+        >
+          <h1
+            ref={titleRef}
+            className="hero-title"
+            onClick={() => navigate('/')}
+          >
+            {splitTitle(sectionTitles[currentSection] ?? 'SURAKSH')}
+          </h1>
+          <div className="hero-subtitle" ref={subtitleRef}>
+            {(sectionSubtitles[currentSection] ?? sectionSubtitles[0]).map((line, i) => (
+              <span key={i} className="subtitle-line">{line}</span>
+            ))}
+          </div>
+          <div className="hero-cta">
+            <button className="hero-cta-btn" style={{ background: 'linear-gradient(135deg, #10b981, #059669)', color: '#fff' }} onClick={() => navigate('/user/login')}>User Login →</button>
+            <button className="hero-cta-btn" style={{ background: 'linear-gradient(135deg, #0ea5e9, #0284c7)', color: '#fff' }} onClick={() => navigate('/admin/login')}>Admin Portal →</button>
+          </div>
+        </div>
 
         {/* Scroll progress */}
         <div ref={scrollProgressRef} className="scroll-progress" style={{ visibility: 'hidden' }}>
@@ -525,10 +556,13 @@ export const HorizonHeroSection: React.FC = () => {
 
         {/* Scroll sections */}
         <div className="scroll-sections">
-          {/* First visible section spacer */}
+          {/* Section 0 spacer — SURAKSH hero */}
           <div style={{ minHeight: '100vh' }} />
 
-          {/* Section 2 — Features */}
+          {/* Section 1 spacer — one extra step before features */}
+          <div style={{ minHeight: '100vh' }} />
+
+          {/* Section 2 — Platform Features */}
           <section className="content-section">
             <h2 className="section-heading">PLATFORM <span>FEATURES</span></h2>
             <p className="section-sub">Everything built into Suraksh</p>
@@ -561,32 +595,7 @@ export const HorizonHeroSection: React.FC = () => {
             </div>
           </section>
 
-          {/* CTA footer */}
-          <section className="content-section" style={{ minHeight: '60vh' }}>
-            <h2 className="section-heading">READY TO <span>BEGIN?</span></h2>
-            <div style={{ display: 'flex', gap: '16px', marginTop: '40px', flexWrap: 'wrap', justifyContent: 'center' }}>
-              <button
-                onClick={() => navigate('/user/login')}
-                style={{
-                  padding: '14px 36px', background: 'linear-gradient(135deg, #10b981, #059669)',
-                  color: '#fff', border: 'none', borderRadius: '8px', fontSize: '0.95rem',
-                  fontWeight: 700, cursor: 'pointer', letterSpacing: '0.05em',
-                }}
-              >
-                User Portal →
-              </button>
-              <button
-                onClick={() => navigate('/admin/login')}
-                style={{
-                  padding: '14px 36px', background: 'linear-gradient(135deg, #0ea5e9, #0284c7)',
-                  color: '#fff', border: 'none', borderRadius: '8px', fontSize: '0.95rem',
-                  fontWeight: 700, cursor: 'pointer', letterSpacing: '0.05em',
-                }}
-              >
-                Admin Portal →
-              </button>
-            </div>
-          </section>
+
         </div>
       </div>
     </>
